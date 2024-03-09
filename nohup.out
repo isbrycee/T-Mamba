@@ -1,0 +1,39 @@
+cuda
+Complete the initialization of configuration
+Complete the initialization of dataloader
+Complete the initialization of model:DenseVNet, optimizer:Adam, and lr_scheduler:ReduceLROnPlateau
+Complete the initialization of loss function
+Complete the initialization of metrics
+Complete the initialization of trainer
+Traceback (most recent call last):
+  File "/root/paddlejob/workspace/env_run/output/haojing08/minigptv2/lib/python3.9/site-packages/torch/utils/data/dataloader.py", line 1120, in _try_get_data
+    data = self._data_queue.get(timeout=timeout)
+  File "/root/paddlejob/workspace/env_run/output/haojing08/minigptv2/lib/python3.9/queue.py", line 180, in get
+    self.not_empty.wait(remaining)
+  File "/root/paddlejob/workspace/env_run/output/haojing08/minigptv2/lib/python3.9/threading.py", line 316, in wait
+    gotit = waiter.acquire(True, timeout)
+  File "/root/paddlejob/workspace/env_run/output/haojing08/minigptv2/lib/python3.9/site-packages/torch/utils/data/_utils/signal_handling.py", line 66, in handler
+    _error_if_any_worker_fails()
+RuntimeError: DataLoader worker (pid 24849) is killed by signal: Killed. 
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/root/paddlejob/workspace/env_run/output/haojing08/PMFSNet-master/./train.py", line 312, in <module>
+    main()
+  File "/root/paddlejob/workspace/env_run/output/haojing08/PMFSNet-master/./train.py", line 307, in main
+    trainer.training()
+  File "/root/paddlejob/workspace/env_run/output/haojing08/PMFSNet-master/lib/trainers/tooth_trainer.py", line 62, in training
+    self.train_epoch(epoch)
+  File "/root/paddlejob/workspace/env_run/output/haojing08/PMFSNet-master/lib/trainers/tooth_trainer.py", line 104, in train_epoch
+    for batch_idx, (input_tensor, target) in enumerate(self.train_data_loader):
+  File "/root/paddlejob/workspace/env_run/output/haojing08/minigptv2/lib/python3.9/site-packages/torch/utils/data/dataloader.py", line 628, in __next__
+    data = self._next_data()
+  File "/root/paddlejob/workspace/env_run/output/haojing08/minigptv2/lib/python3.9/site-packages/torch/utils/data/dataloader.py", line 1316, in _next_data
+    idx, data = self._get_data()
+  File "/root/paddlejob/workspace/env_run/output/haojing08/minigptv2/lib/python3.9/site-packages/torch/utils/data/dataloader.py", line 1272, in _get_data
+    success, data = self._try_get_data()
+  File "/root/paddlejob/workspace/env_run/output/haojing08/minigptv2/lib/python3.9/site-packages/torch/utils/data/dataloader.py", line 1133, in _try_get_data
+    raise RuntimeError('DataLoader worker (pid(s) {}) exited unexpectedly'.format(pids_str)) from e
+RuntimeError: DataLoader worker (pid(s) 24849) exited unexpectedly
+sh: log_ours_2d_base_bs4_lr5e-3_50e_T010_Tmax2_2cards.txt: No such file or directory

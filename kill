@@ -1,0 +1,3 @@
+ps aux|grep 3D-CBCT-Tooth|grep -v grep|cut -c 9-15|xargs kill -15
+ps aux|grep haojing08/minigpt |grep -v grep|cut -c 9-15|xargs kill -15
+
