@@ -7,9 +7,9 @@ pip install -r requirements.txt
 mamba_ssm==1.0.1
 causal_conv1d==1.0.0
 
-cd Vim-main
-pip install -e mamba
-cd causal-conv1d
+cd Vim-main/mamba
+python setup.py install
+cd ../causal-conv1d
 python setup.py install
 ```
 
