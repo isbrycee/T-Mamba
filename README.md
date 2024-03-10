@@ -6,7 +6,8 @@ pip install -r requirements.txt
 
 cd Vim-main
 pip install -e mamba
-pip install -e causal_conv1d>=1.1.0
+cd causal-conv1d
+python setup.py install
 ```
 
 ## Training
