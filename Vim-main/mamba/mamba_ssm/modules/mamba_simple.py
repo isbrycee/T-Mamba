@@ -216,10 +216,10 @@ class Mamba(nn.Module):
                 # F.linear(rearrange(out_z, "b d l -> b l d"), out_proj_weight, out_proj_bias)
                 # add by HJ
                 # print("here")
-                fft_res = self.fftlayer(rearrange(out + out_b.flip([-1]), "b d l -> b l d"))
-                out = F.linear(fft_res + rearrange(out + out_b.flip([-1]), "b d l -> b l d"), self.out_proj.weight, self.out_proj.bias)
+                # fft_res = self.fftlayer(rearrange(out + out_b.flip([-1]), "b d l -> b l d"))
+                # out = F.linear(fft_res + rearrange(out + out_b.flip([-1]), "b d l -> b l d"), self.out_proj.weight, self.out_proj.bias)
                 # original
-                # out = F.linear(rearrange(out + out_b.flip([-1]), "b d l -> b l d"), self.out_proj.weight, self.out_proj.bias)
+                out = F.linear(rearrange(out + out_b.flip([-1]), "b d l -> b l d"), self.out_proj.weight, self.out_proj.bias)
             else:
                 out = mamba_inner_fn(
                     xz,
