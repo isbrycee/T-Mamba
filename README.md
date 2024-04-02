@@ -4,6 +4,7 @@ conda create -n tmamba python=3.9
 conda activate tmamba
 pip install -r requirements.txt
 
+Requirement specific version:
 mamba_ssm==1.0.1
 causal_conv1d==1.0.0
 
