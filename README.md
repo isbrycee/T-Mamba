@@ -1,3 +1,14 @@
+# <img src="figures/gem (3).png" width="30"> T-Mamba
+
+[Jing Hao](https://scholar.google.com/citations?user=E8R8c00AAAAJ&hl=zh-CN), [Lei He](), [Kuo Feng Hung](https://scholar.google.com/citations?user=17V5x14AAAAJ&hl=zh-CN).
+
+This repository is the official implementation of the [T-Mamba: Frequency-Enhanced Gated Long-Range Dependency for Tooth 3D CBCT Segmentation](https://arxiv.org/pdf/2404.01065.pdf).
+
+More experiments are running 🔥.
+
+Coming soon...
+
+
 ## Install
 ```sh
 conda create -n tmamba python=3.9
