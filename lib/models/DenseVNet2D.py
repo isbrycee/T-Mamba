@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from torch.cuda.amp import autocast
 import sys
 try:
-    from mamba_ssm import Mamba
+    from mamba_ssm import Mamba_FFT, Mamba
     from mamba_ssm.ops.triton.layernorm import RMSNorm, layer_norm_fn, rms_norm_fn
     print('succesfully import mamba_ssm')
 except:
@@ -375,7 +375,7 @@ class Vim_Block(nn.Module):
         #         'expand': 2,    # Block expansion factor
         #     }   
         ssm_cfg = {}
-        mixer_cls = partial(Mamba, layer_idx=None, bimamba_type=bimamba_type, **ssm_cfg, **factory_kwargs)
+        mixer_cls = partial(Mamba_FFT, layer_idx=None, bimamba_type=bimamba_type, **ssm_cfg, **factory_kwargs)
         norm_cls = partial(
             RMSNorm, eps=float(1e-5), **factory_kwargs
         )
@@ -390,7 +390,7 @@ class Vim_Block(nn.Module):
             ), "Only LayerNorm and RMSNorm are supported for fused_add_norm"
 
     def forward(
-        self, x: Tensor, learnable_positional_embed: nn.Parameter=None, residual: Optional[Tensor] = None, inference_params=None
+        self, x: Tensor, learnable_positional_embed: nn.Parameter=None, num_block:int=-1, SpectralGatingBlocks: nn.Parameter=None, GateModules: list=None, residual: Optional[Tensor] = None, inference_params=None
     ):
         r"""Pass the input through the encoder layer.
 
@@ -406,7 +406,7 @@ class Vim_Block(nn.Module):
         n_tokens = x.shape[2:].numel()
         img_dims = x.shape[2:]
         hidden_states = x.reshape(B, C, n_tokens).transpose(-1, -2)
-
+        
         # add resdual
         hidden_states_resdual = x.reshape(B, C, n_tokens).transpose(-1, -2) # (b, n_tokens, c)
         # add learnable_positional_embed
@@ -444,7 +444,7 @@ class Vim_Block(nn.Module):
                     residual_in_fp32=self.residual_in_fp32,
                     eps=self.norm.eps,
                 )    
-        hidden_states = self.mixer(hidden_states, inference_params=inference_params)
+        hidden_states = self.mixer(hidden_states, inference_params=inference_params, No_block=num_block, SpectralGatingBlocks=SpectralGatingBlocks, GateModules=GateModules)
 
         # add pos twice 
         hidden_states = hidden_states + learnable_positional_embed.to(device)
@@ -577,25 +577,34 @@ class DenseVNet2D(nn.Module):
         )
         self.upsample_out = torch.nn.Upsample(scale_factor=2, mode='bilinear')
 
-        if scaling_version == "BASE" or scaling_version == "DEEPER_3":
-            self.learnable_positional_embed = [nn.Parameter(AbsolutePositionalEncoder(6, 320*640)),
-                                            nn.Parameter(AbsolutePositionalEncoder(12, 160*320)),
-                                            nn.Parameter(AbsolutePositionalEncoder(24, 80*160))]
+        if scaling_version == "BASE" or scaling_version == "DEEPER_3" or scaling_version == "TINY" or scaling_version == "WIDER" or scaling_version == "SMALL":
+            self.learnable_positional_embed = [nn.Parameter(AbsolutePositionalEncoder(growth_rate[0], 320*640)),
+                                            nn.Parameter(AbsolutePositionalEncoder(growth_rate[1], 160*320)),
+                                            nn.Parameter(AbsolutePositionalEncoder(growth_rate[2], 80*160))]
+
+            self.SpectralGatingBlocks = [nn.Parameter(torch.randn(growth_rate[0]*4, 320*640, dtype=torch.float32) * 0.02),
+                                     nn.Parameter(torch.randn(growth_rate[1]*4, 160*320, dtype=torch.float32) * 0.02),
+                                     nn.Parameter(torch.randn(growth_rate[2]*4, 80*160, dtype=torch.float32) * 0.02)
+                                    ]
+            self.GateModules = [[nn.Linear(2048, 512), nn.Linear(512, 256), nn.Linear(256, 128)], 
+                            [nn.Linear(2048, 512), nn.Linear(512, 256), nn.Linear(256, 128)], 
+                            [nn.Linear(2048, 512), nn.Linear(512, 256), nn.Linear(256, 128)]
+                                    ]
         else:
             self.learnable_positional_embed = [nn.Parameter(AbsolutePositionalEncoder(4, 320*640)),
                                                 nn.Parameter(AbsolutePositionalEncoder(8, 160*320)),
                                                 nn.Parameter(AbsolutePositionalEncoder(16, 80*160))]
-
-
+        
+        
         # for input size 224*224
         # self.learnable_positional_embed = [nn.Parameter(AbsolutePositionalEncoder(4, 112*112)),
         #                             nn.Parameter(AbsolutePositionalEncoder(8, 56*56)),
         #                             nn.Parameter(AbsolutePositionalEncoder(16, 28*28))]
 
     def forward(self, x):
-        x, skip_1 = self.dfs_blocks[0](x, self.learnable_positional_embed[0])
-        x, skip_2 = self.dfs_blocks[1](x, self.learnable_positional_embed[1])
-        _, skip_3 = self.dfs_blocks[2](x, self.learnable_positional_embed[2])
+        x, skip_1 = self.dfs_blocks[0](x, self.learnable_positional_embed[0], 0, self.SpectralGatingBlocks[0], self.GateModules[0])
+        x, skip_2 = self.dfs_blocks[1](x, self.learnable_positional_embed[1], 0, self.SpectralGatingBlocks[1], self.GateModules[1])
+        _, skip_3 = self.dfs_blocks[2](x, self.learnable_positional_embed[2], 0, self.SpectralGatingBlocks[2], self.GateModules[2])
         
         skip_2 = self.upsample_1(skip_2)
         skip_3 = self.upsample_2(skip_3)
@@ -706,7 +715,7 @@ class DenseFeatureStack(torch.nn.Module):
             in_channels += growth_rate
             # self.mamba.append(MambaLayer(in_channels)) # add by hj
 
-    def forward(self, x, learnable_positional_embed=None):
+    def forward(self, x, learnable_positional_embed=None, no_block=-1, SpectralGatingBlocks=None, GateModules=None):
         feature_stack = [x]
 
         for i, unit in enumerate(self.units):
@@ -722,7 +731,7 @@ class DenseFeatureStack(torch.nn.Module):
             # split_tensors.clear()
 
             out = unit(inputs) # (b, c, w, h)
-            out = self.Vim_Block[i](out, learnable_positional_embed)
+            out = self.Vim_Block[i](out, learnable_positional_embed, no_block, SpectralGatingBlocks, GateModules)
             # out = self.mamba[i](out) # add by hj
             # for VMamba
             # out = self.VMamba[i](out.permute(0, 2, 3, 1).contiguous()).permute(0, 3, 1, 2).contiguous() # add by hj
@@ -764,9 +773,9 @@ class DownsampleWithDfs2D(torch.nn.Module):
         )
         # self.mamba = MambaLayer(downsample_channels + units * growth_rate) # add by hj
 
-    def forward(self, x, learnable_positional_embed=None):
+    def forward(self, x, learnable_positional_embed=None, no_block=-1, SpectralGatingBlocks=None, GateModules=None):
         x = self.downsample(x) # a 2d conv
-        x = self.dfs(x, learnable_positional_embed)
+        x = self.dfs(x, learnable_positional_embed, no_block, SpectralGatingBlocks, GateModules)
         # x = self.mamba(x) # add by hj
         x_skip = self.skip(x)
 

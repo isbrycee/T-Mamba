@@ -52,8 +52,8 @@ params_3D_CBCT_Tooth = {
     "dataset_name": "3D-CBCT-Tooth",
     "dataset_path": r"./datasets/3D-CBCT-Tooth",
     "create_data": False,
-    "batch_size": 8,
-    "num_workers": 48,
+    "batch_size": 1,
+    "num_workers": 24,
     # —————————————————————————————————————————————    Model     ——————————————————————————————————————————————————————
     "model_name": "PMFSNet",
     "in_channels": 1,
@@ -64,8 +64,11 @@ params_3D_CBCT_Tooth = {
         1: "foreground"
     },
     "resume": None,
+    # "resume": "/root/paddlejob/workspace/env_run/output/haojing08/PMFSNet-master-multigpu/runs/2024-03-26-16-09-15_DenseVNet_3D-CBCT-Tooth/checkpoints/latest_DenseVNet.state",
     "pretrain": None,
-    # "pretrain": '/root/paddlejob/workspace/env_run/output/haojing08/PMFSNet-master-multigpu/runs/2024-02-05-12-42-24_DenseVNet_3D-CBCT-Tooth/checkpoints/best_DenseVNet.pth',
+    # "pretrain": '/root/paddlejob/workspace/env_run/output/haojing08/PMFSNet-master-multigpu/runs/2024-03-26-16-09-15_DenseVNet_3D-CBCT-Tooth/checkpoints/latest_DenseVNet.pth',
+    "high_frequency": 0.9,
+    "low_frequency": 0.1,
     # ——————————————————————————————————————————————    Optimizer     ——————————————————————————————————————————————————————
     "optimizer_name": "AdamW",
     "learning_rate": 0.0005, # 0.0005
@@ -306,8 +309,9 @@ params_Tooth_2D_X_ray = {
     "start_epoch": 0,
     "end_epoch": 150,
     "best_metric": 0,
-    "terminal_show_freq": 50,
-    "save_epoch_freq": 50,
+    "update_weight_freq": 1,
+    "terminal_show_freq": 1,
+    "save_epoch_freq": 10,
 }
 
 def parse_args():

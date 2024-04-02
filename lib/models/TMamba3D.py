@@ -32,7 +32,7 @@ def AbsolutePositionalEncoder(emb_dim, max_position=512):
 
 class Vim_Block(nn.Module):
     def __init__(
-        self, dim, fused_add_norm=False, residual_in_fp32=False,drop_path=0.,bimamba_type='v2',device=None, dtype=None
+        self, dim, fused_add_norm=False, residual_in_fp32=False,drop_path=0.,bimamba_type='v2',device=None, dtype=None, high_freq=0.9, low_freq=0.1
     ):
         """
         Simple block wrapping a mixer class with LayerNorm/RMSNorm and residual connection"
@@ -56,7 +56,7 @@ class Vim_Block(nn.Module):
                 'expand': 2,    # Block expansion factor
             }   
         ssm_cfg = {}
-        mixer_cls = partial(Mamba_FFT, layer_idx=None, bimamba_type=bimamba_type, **ssm_cfg, **factory_kwargs)
+        mixer_cls = partial(Mamba_FFT, layer_idx=None, bimamba_type=bimamba_type, high_freq=high_freq, low_freq=low_freq, **ssm_cfg, **factory_kwargs)
         norm_cls = partial(
             RMSNorm, eps=float(1e-5), **factory_kwargs
         )
@@ -168,33 +168,31 @@ class MambaLayer(nn.Module):
 
         return out
 
-class DenseVNet(nn.Module):
-    def __init__(self, in_channels: int = 1, classes: int = 1):
+class TMamba3D(nn.Module):
+    def __init__(self, in_channels: int = 1, classes: int = 1, input_size: tuple = (160, 160, 96), high_freq: float = 0.9, low_freq: float = 0.1):
         super().__init__()
-        self.model_name = "DenseVNet"
+        self.model_name = "TMamba3D"
         self.classes = classes
         kernel_size = [5, 3, 3]
         num_downsample_channels = [24, 24, 24]
         num_skip_channels = [12, 24, 24]
         units = [5, 10, 10]
         growth_rate = [4, 8, 16]
-
+        W, H, D = input_size
+        self.high_freq = high_freq
+        self.low_freq = low_freq
         self.dfs_blocks = torch.nn.ModuleList()
-        self.learnable_positional_embed = [nn.Parameter(AbsolutePositionalEncoder(4, 80*80*48)),
-                                            nn.Parameter(AbsolutePositionalEncoder(8, 40*40*24)),
-                                            nn.Parameter(AbsolutePositionalEncoder(16, 20*20*12))]
-        self.SpectralGatingBlocks = [nn.Parameter(torch.randn(16, 307200, dtype=torch.float32) * 0.02),
-                                     nn.Parameter(torch.randn(32, 38400, dtype=torch.float32) * 0.02),
-                                     nn.Parameter(torch.randn(64, 4800, dtype=torch.float32) * 0.02)
+        self.learnable_positional_embed = [nn.Parameter(AbsolutePositionalEncoder(growth_rate[0], int(H*W*D/8))),
+                                            nn.Parameter(AbsolutePositionalEncoder(growth_rate[1], int(H*W*D/64))),
+                                            nn.Parameter(AbsolutePositionalEncoder(growth_rate[2], int(H*W*D/512)))]
+        self.SpectralGatingBlocks = [nn.Parameter(torch.randn(16, int(H*W*D/8), dtype=torch.float32) * 0.02),
+                                     nn.Parameter(torch.randn(32, int(H*W*D/64), dtype=torch.float32) * 0.02),
+                                     nn.Parameter(torch.randn(64, int(H*W*D/512), dtype=torch.float32) * 0.02)
                                     ]
         self.GateModules = [[nn.Linear(2048, 512), nn.Linear(512, 256), nn.Linear(256, 128)], 
                             [nn.Linear(2048, 512), nn.Linear(512, 256), nn.Linear(256, 128)], 
                             [nn.Linear(2048, 512), nn.Linear(512, 256), nn.Linear(256, 128)]
                                     ]
-        # self.GateModules = [None,
-        #                     None,
-        #                     None,
-        #                             ]
 
         for i in range(3): # 3 scales in total
             self.dfs_blocks.append(
@@ -205,6 +203,8 @@ class DenseVNet(nn.Module):
                     kernel_size=kernel_size[i],
                     units=units[i],
                     growth_rate=growth_rate[i],
+                    high_freq=self.high_freq, 
+                    low_freq=self.low_freq
                 )
             )
             in_channels = num_downsample_channels[i] + units[i] * growth_rate[i]
@@ -305,6 +305,8 @@ class DenseFeatureStack(torch.nn.Module):
         dilation=1,
         batch_norm=True,
         batchwise_spatial_dropout=False,
+        high_freq=0.9,
+        low_freq=0.1
     ):
         super().__init__()
         self.units = torch.nn.ModuleList()
@@ -326,7 +328,7 @@ class DenseFeatureStack(torch.nn.Module):
             )
             # self.mamba.append(MambaLayer(growth_rate)) # add by hj
             self.Vim_Block.append(Vim_Block(growth_rate, fused_add_norm=True, residual_in_fp32=True,\
-                drop_path=0.,device='cuda', dtype=None
+                drop_path=0.,device='cuda', dtype=None, high_freq=high_freq, low_freq=low_freq
             ))
             in_channels += growth_rate
             # self.mamba.append(MambaLayer(in_channels)) # add by hj
@@ -356,6 +358,8 @@ class DownsampleWithDfs(torch.nn.Module):
         kernel_size,
         units,
         growth_rate,
+        high_freq,
+        low_freq
     ):
         super().__init__()
 
@@ -368,7 +372,7 @@ class DownsampleWithDfs(torch.nn.Module):
             preactivation=True,
         )
         self.dfs = DenseFeatureStack(
-            downsample_channels, units, growth_rate, 3, batch_norm=True
+            downsample_channels, units, growth_rate, 3, batch_norm=True, high_freq=high_freq, low_freq=low_freq, 
         )
         self.skip = ConvBlock(
             in_channels=downsample_channels + units * growth_rate,

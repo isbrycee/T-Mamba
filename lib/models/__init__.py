@@ -14,6 +14,8 @@ import lib.utils as utils
 
 from .DenseVNet import DenseVNet
 from .DenseVNet2D import DenseVNet2D
+from .TMamba3D import TMamba3D
+from .TMamba2D import TMamba2D
 from .UNet3D import UNet3D
 from .VNet import VNet
 from .AttentionUNet3D import AttentionUNet3D
@@ -55,6 +57,8 @@ def get_model_optimizer_lr_scheduler(opt):
     if opt["dataset_name"] == "3D-CBCT-Tooth":
         if opt["model_name"] == "DenseVNet":
             model = DenseVNet(in_channels=opt["in_channels"], classes=opt["classes"])
+        if opt["model_name"] == "TMamba3D":
+            model = TMamba3D(in_channels=opt["in_channels"], classes=opt["classes"], input_size=opt['crop_size'], high_freq=opt['high_frequency'], low_freq=opt['low_frequency'])
 
         elif opt["model_name"] == "UNet3D":
             model = UNet3D(opt["in_channels"], opt["classes"], final_sigmoid=False)
@@ -142,8 +146,8 @@ def get_model_optimizer_lr_scheduler(opt):
             raise RuntimeError(f"No {opt['model_name']} model available on {opt['dataset_name']} dataset")
 
     elif opt["dataset_name"] == "Tooth2D-X-Ray-6k":
-        if opt["model_name"] == "DenseVNet2D":
-            model = DenseVNet2D(in_channels=opt["in_channels"], classes=opt["classes"], scaling_version=opt["scaling_version"])
+        if opt["model_name"] == "TMamba2D":
+            model = TMamba2D(in_channels=opt["in_channels"], classes=opt["classes"], scaling_version=opt["scaling_version"], input_size=opt['crop_size'], high_freq=opt['high_frequency'], low_freq=opt['low_frequency'])
         elif opt["model_name"] == "UNet":
             model = UNet(n_channels=opt["in_channels"], n_classes=opt["classes"])
         elif opt["model_name"] == "CKDNet":
@@ -163,7 +167,6 @@ def get_model_optimizer_lr_scheduler(opt):
         elif opt["model_name"] == "BiSeNetV2":
             model = BiSeNetV2(n_classes=opt["classes"])
         else:
-            # model = DenseVNet2D(in_channels=opt["in_channels"], classes=opt["classes"])
             raise RuntimeError(f"No {opt['model_name']} model available on {opt['dataset_name']} dataset")
 
     elif opt["dataset_name"] == "MMOTU":
@@ -243,7 +246,6 @@ def get_model_optimizer_lr_scheduler(opt):
     if not opt['multi_gpu']:
         model = model.to(opt["device"])
         utils.init_weights(model, init_type="kaiming")
-        
     else:
         model = model.to(opt["device"])
         utils.init_weights(model, init_type="kaiming") # xavier kaiming
@@ -313,7 +315,8 @@ def get_model(opt):
     if opt["dataset_name"] == "3D-CBCT-Tooth":
         if opt["model_name"] == "DenseVNet":
             model = DenseVNet(in_channels=opt["in_channels"], classes=opt["classes"])
-
+        elif opt["model_name"] == "TMamba3D":
+            model = TMamba3D(in_channels=opt["in_channels"], classes=opt["classes"], input_size=opt['crop_size'], high_freq=opt['high_frequency'], low_freq=opt['low_frequency'])
         elif opt["model_name"] == "UNet3D":
             model = UNet3D(opt["in_channels"], opt["classes"], final_sigmoid=False)
 
@@ -466,7 +469,9 @@ def get_model(opt):
 
         elif opt["model_name"] == "AttU_Net":
             model = AttU_Net(img_ch=opt["in_channels"], output_ch=opt["classes"])
-
+            
+        if opt["model_name"] == "TMamba2D":
+            model = TMamba2D(in_channels=opt["in_channels"], classes=opt["classes"], scaling_version=opt["scaling_version"], input_size=opt['crop_size'], high_freq=opt['high_frequency'], low_freq=opt['low_frequency'])
         else:
             raise RuntimeError(f"No {opt['model_name']} model available on {opt['dataset_name']} dataset")
 

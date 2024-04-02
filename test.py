@@ -64,6 +64,8 @@ params_3D_CBCT_Tooth = {
         },
     "resume": None,
     "pretrain": None,
+    "high_frequency": 0.9,
+    "low_frequency": 0.1,
     # ——————————————————————————————————————————————    Optimizer     ——————————————————————————————————————————————————————
     "optimizer_name": "Adam",
     "learning_rate": 0.0005,
