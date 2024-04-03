@@ -10,6 +10,7 @@ More experiments are running 🔥
 
 Coming soon...
 
+If u have any quesitons, pls feel free to drop me via isjinghao@gmail.com.
 
 ## Install
 ```sh
