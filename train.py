@@ -264,6 +264,8 @@ params_Tooth_2D_X_ray = {
     },
     "resume": None,
     "pretrain": None,
+    "high_frequency": 0.9,
+    "low_frequency": 0.1,
     # ——————————————————————————————————————————————    Optimizer     ——————————————————————————————————————————————————————
     # "optimizer_name": "AdamW",
     # "learning_rate": 0.005,
