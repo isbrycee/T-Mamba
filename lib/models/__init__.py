@@ -147,7 +147,7 @@ def get_model_optimizer_lr_scheduler(opt):
 
     elif opt["dataset_name"] == "Tooth2D-X-Ray-6k":
         if opt["model_name"] == "TMamba2D":
-            model = TMamba2D(in_channels=opt["in_channels"], classes=opt["classes"], scaling_version=opt["scaling_version"], input_size=opt['crop_size'], high_freq=opt['high_frequency'], low_freq=opt['low_frequency'])
+            model = TMamba2D(in_channels=opt["in_channels"], classes=opt["classes"], scaling_version=opt["scaling_version"], input_size=opt['resize_shape'], high_freq=opt['high_frequency'], low_freq=opt['low_frequency'])
         elif opt["model_name"] == "UNet":
             model = UNet(n_channels=opt["in_channels"], n_classes=opt["classes"])
         elif opt["model_name"] == "CKDNet":
