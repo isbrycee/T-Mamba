@@ -37,3 +37,8 @@ sh train.sh
 ```sh
 sh test.sh
 ```
+
+## Inference
+```sh
+sh infer.sh
+```
