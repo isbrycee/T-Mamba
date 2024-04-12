@@ -11,6 +11,7 @@ import argparse
 import torch
 from lib import utils, dataloaders, models, losses, metrics, trainers
 import torch.distributed as dist
+from datetime import datetime, timedelta
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "7"
 
@@ -52,10 +53,10 @@ params_3D_CBCT_Tooth = {
     "dataset_name": "3D-CBCT-Tooth",
     "dataset_path": r"./datasets/3D-CBCT-Tooth",
     "create_data": False,
-    "batch_size": 1,
+    "batch_size": 6,
     "num_workers": 24,
     # —————————————————————————————————————————————    Model     ——————————————————————————————————————————————————————
-    "model_name": "PMFSNet",
+    "model_name": "TMamba3D",
     "in_channels": 1,
     "classes": 2,
     "index_to_class_dict":
@@ -252,9 +253,9 @@ params_Tooth_2D_X_ray = {
     "dataset_name": "Tooth2D-X-Ray-6k/",
     "dataset_path": r"./datasets/Tooth2D-X-Ray-6k/",
     "batch_size": 4,
-    "num_workers": 12,
+    "num_workers": 4,
     # —————————————————————————————————————————————    Model     ——————————————————————————————————————————————————————
-    "model_name": "DenseVNet2D",
+    "model_name": "TMamba2D",
     "in_channels": 3,
     "classes": 2,
     "index_to_class_dict":
@@ -267,26 +268,12 @@ params_Tooth_2D_X_ray = {
     "high_frequency": 0.9,
     "low_frequency": 0.1,
     # ——————————————————————————————————————————————    Optimizer     ——————————————————————————————————————————————————————
-    # "optimizer_name": "AdamW",
-    # "learning_rate": 0.005,
-    # "weight_decay": 0.000001,
-    # "momentum": 0.8, # 0.9657205586290213,
-    # # ———————————————————————————————————————————    Learning Rate Scheduler     —————————————————————————————————————————————————————
-    # "lr_scheduler_name": "CosineAnnealingWarmRestarts",
-    # "gamma": 0.9582311026945434,
-    # "step_size": 1, # invalid for CosineAnnealingWarmRestarts
-    # "milestones": [1, 3, 5, 7, 8, 9],
-    # "T_max": 30,
-    # "T_0": 10,
-    # "T_mult": 2, # when epoch equals [10, 30, 70], lr=max_lr
-    # "mode": "max",
-    # "patience": 20,
-    # "factor": 0.3,
-    # # ——————————————————————————————————————————————    Optimizer     ——————————————————————————————————————————————————————
     "optimizer_name": "AdamW",
-    "learning_rate": 0.0025, # 0.005 0.0025
-    "weight_decay": 0.00005,
-    "momentum": 0.8,
+    "learning_rate": 0.0075, # 0.005 0.0025
+    # "weight_decay": 0.00005,
+    # "momentum": 0.8,
+    "weight_decay": 0.000001,
+    "momentum": 0.9657205586290213,
     # ———————————————————————————————————————————    Learning Rate Scheduler     —————————————————————————————————————————————————————
     "lr_scheduler_name": "MultiStepLR",
     "gamma": 0.1,
@@ -309,7 +296,7 @@ params_Tooth_2D_X_ray = {
     "optimize_params": False,
     "run_dir": r"./runs",
     "start_epoch": 0,
-    "end_epoch": 150,
+    "end_epoch": 30,
     "best_metric": 0,
     "update_weight_freq": 1,
     "terminal_show_freq": 1,
@@ -325,13 +312,17 @@ def parse_args():
     parser.add_argument("--scaling_version", type=str, default="TINY", help="scaling version of PMFSNet")
     parser.add_argument("--epoch", type=int, default=20, help="training epoch")
     parser.add_argument("--multi_gpu", type=str, default='false', help="using multi-gpu or not for training")
+    parser.add_argument("--local-rank", type=int, default=0, help="local_rank")
     args = parser.parse_args()
     return args
 
 def main():
     # analyse console arguments
     args = parse_args()
-
+    if args.multi_gpu == 'True':
+        torch.distributed.init_process_group(backend="nccl", timeout=timedelta(seconds=7200000))
+        if args.local_rank == 0:
+            print("Let's use", torch.cuda.device_count(), "GPUs!")
     # select the dictionary of hyperparameters used for training
     if args.dataset == "3D-CBCT-Tooth":
         params = params_3D_CBCT_Tooth
@@ -346,6 +337,7 @@ def main():
 
     # update the dictionary of hyperparameters used for training
     params["multi_gpu"] = args.multi_gpu == 'true' or args.multi_gpu == 'True'
+    params["local_rank"] = args.local_rank
     params["dataset_name"] = args.dataset
     # for pretraining
     # params["dataset_path"] = os.path.join(r"/root/paddlejob/workspace/env_run/output/haojing08/PMFSNet-master-multigpu/datasets", ("CTooth+_labelled_CBCT" if args.dataset == "3D-CBCT-Tooth" else args.dataset))
@@ -355,7 +347,9 @@ def main():
         params["pretrain"] = args.pretrain_weight
     params["dimension"] = args.dimension
     params["scaling_version"] = args.scaling_version
-    print('model type: ' + params["scaling_version"])
+
+    if args.local_rank == 0:
+        print('model type: ' + params["scaling_version"])
     if args.epoch is not None:
         params["end_epoch"] = args.epoch
         params["save_epoch_freq"] = args.epoch // 4
@@ -367,38 +361,45 @@ def main():
     
     # get the cuda device
     if params["cuda"]:
-        params["device"] = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if params["multi_gpu"]:
+            params["device"] = torch.device("cuda:{}".format(params["local_rank"]) if torch.cuda.is_available() else "cpu")
+        else:
+            params["device"] = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     else:
         params["device"] = torch.device("cpu")
-    print(params["device"])
     curr_cuda_visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES", "")
-    print("Current Available GPU IDs: ", curr_cuda_visible_devices)
-    print("Complete the initialization of configuration")
+    # print("Current Available GPU IDs: ", curr_cuda_visible_devices)
+    if args.local_rank == 0:
+        print("Complete the initialization of configuration")
 
     # initialize the dataloader
     train_loader, valid_loader = dataloaders.get_dataloader(params)
-    print("Complete the initialization of dataloader")
+    if args.local_rank == 0:
+        print("Complete the initialization of dataloader")
 
     # initialize the model, optimizer, and lr_scheduler
     model, optimizer, lr_scheduler = models.get_model_optimizer_lr_scheduler(params)
-
-    print("Complete the initialization of model:{}, optimizer:{}, and lr_scheduler:{}".format(params["model_name"], params["optimizer_name"], params["lr_scheduler_name"]))
+    if args.local_rank == 0:
+        print("Complete the initialization of model:{}, optimizer:{}, and lr_scheduler:{}".format(params["model_name"], params["optimizer_name"], params["lr_scheduler_name"]))
 
     # initialize the loss function
     loss_function = losses.get_loss_function(params)
-    print("Complete the initialization of loss function")
+    if args.local_rank == 0:
+        print("Complete the initialization of loss function")
 
     # initialize the metrics
     metric = metrics.get_metric(params)
-    print("Complete the initialization of metrics")
+    if args.local_rank == 0:
+        print("Complete the initialization of metrics")
 
     # initialize the trainer
-    trainer = trainers.get_trainer(params, train_loader, valid_loader, model, optimizer, lr_scheduler, loss_function, metric)
+    trainer = trainers.get_trainer(params, train_loader, valid_loader, model, optimizer, lr_scheduler, loss_function, metric, )
 
     # resume or load pretrained weights
     if (params["resume"] is not None) or (params["pretrain"] is not None):
         trainer.load()
-    print("Complete the initialization of trainer")
+    if args.local_rank == 0:
+        print("Complete the initialization of trainer")
 
     # start training
     trainer.training()
