@@ -34,7 +34,8 @@ causal_conv1d==1.0.0
 
 ## Training
 ```sh
-sh train.sh
+sh train.sh # for 3D
+sh 2d_train.sh # for 2D
 ```
 
 ## Testing
