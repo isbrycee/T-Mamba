@@ -8,6 +8,8 @@ This repository is the official implementation of the [T-Mamba: Frequency-Enhanc
 
 More experiments are running 🔥
 
+Currently, our T-Mamba supports 2D & 3D vision tasks. Welcome to try it for improving your model's performance.
+
 Coming soon...
 
 If u have any quesitons, pls feel free to drop me via isjinghao@gmail.com.
