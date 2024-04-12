@@ -138,6 +138,11 @@ class ISIC2018Tester:
 
     def load(self):
         pretrain_state_dict = torch.load(self.opt["pretrain"], map_location=lambda storage, loc: storage.cuda(self.device))
+        # for multigpus
+        for k, v in pretrain_state_dict.items():
+            if "module." in k:
+                pretrain_state_dict = {key.replace('module.', ''): value for key, value in pretrain_state_dict.items()}
+                break
         model_state_dict = self.model.state_dict()
         load_count = 0
         for param_name in model_state_dict.keys():

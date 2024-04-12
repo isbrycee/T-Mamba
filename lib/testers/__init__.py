@@ -17,6 +17,8 @@ def get_tester(opt, model, metrics=None):
         tester = MMOTUTester(opt, model, metrics)
     elif opt["dataset_name"] == "ISIC-2018":
         tester = ISIC2018Tester(opt, model, metrics)
+    elif opt["dataset_name"] == "Tooth2D-X-Ray-6k":
+        tester = ISIC2018Tester(opt, model, metrics)
     else:
         raise RuntimeError(f"No {opt['dataset_name']} dataset available when initialize tester")
 

@@ -422,7 +422,7 @@ def main():
     input_value = np.random.randn(1, 1, 160, 160, 96)
     input_value = torch.from_numpy(input_value).float().cuda()
     print(input_value.dtype)
-    model = DenseVNet(1).cuda()
+    model = TMamba3D(1).cuda()
     model.train()
 
     out = model(input_value)

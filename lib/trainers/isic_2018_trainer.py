@@ -9,6 +9,7 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 from lib import utils
+import torch.distributed as dist
 
 
 class ISIC2018Trainer:
@@ -27,6 +28,7 @@ class ISIC2018Trainer:
         self.loss_function = loss_function
         self.metric = metric
         self.device = opt["device"]
+        self.local_rank = opt["local_rank"]
 
         if not self.opt["optimize_params"]:
             if self.opt["resume"] is None:
@@ -37,10 +39,17 @@ class ISIC2018Trainer:
             self.tensorboard_dir = os.path.join(self.execute_dir, "board")
             self.log_txt_path = os.path.join(self.execute_dir, "log.txt")
             if self.opt["resume"] is None:
-                utils.make_dirs(self.checkpoint_dir)
-                utils.make_dirs(self.tensorboard_dir)
-            utils.pre_write_txt("Complete the initialization of model:{}, optimizer:{}, and lr_scheduler:{}".format(self.opt["model_name"], self.opt["optimizer_name"], self.opt["lr_scheduler_name"]), self.log_txt_path)
+                if not opt["multi_gpu"]:
+                    utils.make_dirs(self.checkpoint_dir)
+                    utils.make_dirs(self.tensorboard_dir)
+                    utils.pre_write_txt("Complete the initialization of model:{}, optimizer:{}, and lr_scheduler:{}".format(self.opt["model_name"], self.opt["optimizer_name"], self.opt["lr_scheduler_name"]), self.log_txt_path)
+                else:
+                    if opt['local_rank'] == 0:
+                        utils.make_dirs(self.checkpoint_dir)
+                        utils.make_dirs(self.tensorboard_dir)
+                        utils.pre_write_txt("Complete the initialization of model:{}, optimizer:{}, and lr_scheduler:{}".format(self.opt["model_name"], self.opt["optimizer_name"], self.opt["lr_scheduler_name"]), self.log_txt_path)
 
+        
         self.start_epoch = self.opt["start_epoch"]
         self.end_epoch = self.opt["end_epoch"]
         self.best_metric = opt["best_metric"]
@@ -55,40 +64,32 @@ class ISIC2018Trainer:
 
             self.optimizer.zero_grad()
 
+            if self.opt["multi_gpu"]:
+                self.train_data_loader.sampler.set_epoch(epoch)
+            
             self.train_epoch(epoch)
 
             self.valid_epoch(epoch)
+            
+            # for waiting all processes
+            if self.opt["multi_gpu"]:
+                torch.distributed.barrier()
 
-            train_class_IoU = self.statistics_dict["train"]["total_area_intersect"] / self.statistics_dict["train"]["total_area_union"]
-            train_class_IoU = np.nan_to_num(train_class_IoU)
-            valid_class_IoU = self.statistics_dict["valid"]["total_area_intersect"] / self.statistics_dict["valid"]["total_area_union"]
-            valid_class_IoU = np.nan_to_num(valid_class_IoU)
-            valid_dsc = self.statistics_dict["valid"]["DSC_sum"] / self.statistics_dict["valid"]["count"]
-            valid_JI = self.statistics_dict["valid"]["JI_sum"] / self.statistics_dict["valid"]["count"]
-            valid_ACC = self.statistics_dict["valid"]["ACC_sum"] / self.statistics_dict["valid"]["count"]
+            if self.local_rank == 0:
+                train_class_IoU = self.statistics_dict["train"]["total_area_intersect"] / self.statistics_dict["train"]["total_area_union"]
+                train_class_IoU = np.nan_to_num(train_class_IoU)
+                valid_class_IoU = self.statistics_dict["valid"]["total_area_intersect"] / self.statistics_dict["valid"]["total_area_union"]
+                valid_class_IoU = np.nan_to_num(valid_class_IoU)
+                valid_dsc = self.statistics_dict["valid"]["DSC_sum"] / self.statistics_dict["valid"]["count"]
+                valid_JI = self.statistics_dict["valid"]["JI_sum"] / self.statistics_dict["valid"]["count"]
+                valid_ACC = self.statistics_dict["valid"]["ACC_sum"] / self.statistics_dict["valid"]["count"]
 
-            if isinstance(self.lr_scheduler, optim.lr_scheduler.ReduceLROnPlateau):
-                self.lr_scheduler.step(valid_JI)
-            else:
-                self.lr_scheduler.step()
+                if isinstance(self.lr_scheduler, optim.lr_scheduler.ReduceLROnPlateau):
+                    self.lr_scheduler.step(valid_JI)
+                else:
+                    self.lr_scheduler.step()
 
-            print(
-                "[{}]  epoch:[{:05d}/{:05d}]  lr:{:.6f}  train_loss:{:.6f}  train_DSC:{:.6f}  train_IoU:{:.6f}  train_ACC:{:.6f}  train_JI:{:.6f}  valid_DSC:{:.6f}  valid_IoU:{:.6f}  valid_ACC:{:.6f}  valid_JI:{:.6f}  best_JI:{:.6f}"
-                .format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        epoch, self.end_epoch - 1,
-                        self.optimizer.param_groups[0]['lr'],
-                        self.statistics_dict["train"]["loss"] / self.statistics_dict["train"]["count"],
-                        self.statistics_dict["train"]["DSC_sum"] / self.statistics_dict["train"]["count"],
-                        train_class_IoU[1],
-                        self.statistics_dict["train"]["ACC_sum"] / self.statistics_dict["train"]["count"],
-                        self.statistics_dict["train"]["JI_sum"] / self.statistics_dict["train"]["count"],
-                        valid_dsc,
-                        valid_class_IoU[1],
-                        valid_ACC,
-                        valid_JI,
-                        self.best_metric))
-            if not self.opt["optimize_params"]:
-                utils.pre_write_txt(
+                print(
                     "[{}]  epoch:[{:05d}/{:05d}]  lr:{:.6f}  train_loss:{:.6f}  train_DSC:{:.6f}  train_IoU:{:.6f}  train_ACC:{:.6f}  train_JI:{:.6f}  valid_DSC:{:.6f}  valid_IoU:{:.6f}  valid_ACC:{:.6f}  valid_JI:{:.6f}  best_JI:{:.6f}"
                     .format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             epoch, self.end_epoch - 1,
@@ -102,43 +103,62 @@ class ISIC2018Trainer:
                             valid_class_IoU[1],
                             valid_ACC,
                             valid_JI,
-                            self.best_metric), self.log_txt_path)
+                            self.best_metric))
+                if not self.opt["optimize_params"]:
+                    utils.pre_write_txt(
+                        "[{}]  epoch:[{:05d}/{:05d}]  lr:{:.6f}  train_loss:{:.6f}  train_DSC:{:.6f}  train_IoU:{:.6f}  train_ACC:{:.6f}  train_JI:{:.6f}  valid_DSC:{:.6f}  valid_IoU:{:.6f}  valid_ACC:{:.6f}  valid_JI:{:.6f}  best_JI:{:.6f}"
+                        .format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                epoch, self.end_epoch - 1,
+                                self.optimizer.param_groups[0]['lr'],
+                                self.statistics_dict["train"]["loss"] / self.statistics_dict["train"]["count"],
+                                self.statistics_dict["train"]["DSC_sum"] / self.statistics_dict["train"]["count"],
+                                train_class_IoU[1],
+                                self.statistics_dict["train"]["ACC_sum"] / self.statistics_dict["train"]["count"],
+                                self.statistics_dict["train"]["JI_sum"] / self.statistics_dict["train"]["count"],
+                                valid_dsc,
+                                valid_class_IoU[1],
+                                valid_ACC,
+                                valid_JI,
+                                self.best_metric), self.log_txt_path)
 
+                if self.opt["optimize_params"]:
+                    nni.report_intermediate_result(valid_JI)
+
+        if self.local_rank == 0:
             if self.opt["optimize_params"]:
-                nni.report_intermediate_result(valid_JI)
-
-        if self.opt["optimize_params"]:
-            nni.report_final_result(self.best_metric)
+                nni.report_final_result(self.best_metric)
 
     def train_epoch(self, epoch):
-
+        
         self.model.train()
 
         for batch_idx, (input_tensor, target) in enumerate(self.train_data_loader):
-
             input_tensor, target = input_tensor.to(self.device), target.to(self.device)
-            output = self.model(input_tensor)
-
-            dice_loss = self.loss_function(output, target)
-            dice_loss.backward()
-            self.optimizer.step()
             self.optimizer.zero_grad()
-
+            output = self.model(input_tensor)
+            dice_loss = self.loss_function(output, target)
+            if self.opt["multi_gpu"]:
+                dist.all_reduce(dice_loss, op=dist.ReduceOp.SUM)
+            dice_loss.backward()
+            
+            self.optimizer.step()
+            
             self.calculate_metric_and_update_statistcs(output.cpu().float(), target.cpu().float(), len(target), dice_loss.cpu(), mode="train")
 
             if (batch_idx + 1) % self.terminal_show_freq == 0:
                 train_class_IoU = self.statistics_dict["train"]["total_area_intersect"] / self.statistics_dict["train"]["total_area_union"]
                 train_class_IoU = np.nan_to_num(train_class_IoU)
-                print("[{}]  epoch:[{:05d}/{:05d}]  step:[{:04d}/{:04d}]  lr:{:.6f}  loss:{:.6f}  dsc:{:.6f}  IoU:{:.6f}  ACC:{:.6f}  JI:{:.6f}"
-                      .format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                              epoch, self.end_epoch - 1,
-                              batch_idx + 1, len(self.train_data_loader),
-                              self.optimizer.param_groups[0]['lr'],
-                              self.statistics_dict["train"]["loss"] / self.statistics_dict["train"]["count"],
-                              self.statistics_dict["train"]["DSC_sum"] / self.statistics_dict["train"]["count"],
-                              train_class_IoU[1],
-                              self.statistics_dict["train"]["ACC_sum"] / self.statistics_dict["train"]["count"],
-                              self.statistics_dict["train"]["JI_sum"] / self.statistics_dict["train"]["count"]))
+                if self.local_rank == 0:
+                    print("[{}]  epoch:[{:05d}/{:05d}]  step:[{:04d}/{:04d}]  lr:{:.6f}  loss:{:.6f}  dsc:{:.6f}  IoU:{:.6f}  ACC:{:.6f}  JI:{:.6f}"
+                        .format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                epoch, self.end_epoch - 1,
+                                batch_idx + 1, len(self.train_data_loader),
+                                self.optimizer.param_groups[0]['lr'],
+                                self.statistics_dict["train"]["loss"] / self.statistics_dict["train"]["count"],
+                                self.statistics_dict["train"]["DSC_sum"] / self.statistics_dict["train"]["count"],
+                                train_class_IoU[1],
+                                self.statistics_dict["train"]["ACC_sum"] / self.statistics_dict["train"]["count"],
+                                self.statistics_dict["train"]["JI_sum"] / self.statistics_dict["train"]["count"]))
                 if not self.opt["optimize_params"]:
                     utils.pre_write_txt("[{}]  epoch:[{:05d}/{:05d}]  step:[{:04d}/{:04d}]  lr:{:.6f}  loss:{:.6f}  dsc:{:.6f}  IoU:{:.6f}  ACC:{:.6f}  JI:{:.6f}"
                                         .format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -155,25 +175,45 @@ class ISIC2018Trainer:
     def valid_epoch(self, epoch):
 
         self.model.eval()
+        
+        if self.local_rank == 0:
+            with torch.no_grad():
+                for input_tensor, target in tqdm(self.valid_data_loader):
+                    input_tensor, target = input_tensor.to(self.device), target.to(self.device)
+                    if self.opt["multi_gpu"]:
+                        output = self.model.module(input_tensor)
+                    else:  
+                        output = self.model(input_tensor)
+                    self.calculate_metric_and_update_statistcs(output.cpu(), target.cpu(), len(target), mode="valid")
 
-        with torch.no_grad():
+                cur_JI = self.statistics_dict["valid"]["JI_sum"] / self.statistics_dict["valid"]["count"]
 
-            for input_tensor, target in tqdm(self.valid_data_loader):
-                input_tensor, target = input_tensor.to(self.device), target.to(self.device)
+                if (not self.opt["optimize_params"]) and (epoch + 1) % self.save_epoch_freq == 0 and self.local_rank==0:
+                    self.save(epoch, cur_JI, self.best_metric, type="normal")
+                if not self.opt["optimize_params"] and self.local_rank==0:
+                    self.save(epoch, cur_JI, self.best_metric, type="latest")
+                if cur_JI > self.best_metric:
+                    self.best_metric = cur_JI
+                    if not self.opt["optimize_params"] and self.local_rank==0:
+                        self.save(epoch, cur_JI, self.best_metric, type="best")
+        # else:
+        #     with torch.no_grad():
+        #         for input_tensor, target in (self.valid_data_loader):
+        #             input_tensor, target = input_tensor.to(self.device), target.to(self.device)
 
-                output = self.model(input_tensor)
-                self.calculate_metric_and_update_statistcs(output.cpu(), target.cpu(), len(target), mode="valid")
+        #             output = self.model(input_tensor)
+        #             self.calculate_metric_and_update_statistcs(output.cpu(), target.cpu(), len(target), mode="valid")
 
-            cur_JI = self.statistics_dict["valid"]["JI_sum"] / self.statistics_dict["valid"]["count"]
+        #         cur_JI = self.statistics_dict["valid"]["JI_sum"] / self.statistics_dict["valid"]["count"]
 
-            if (not self.opt["optimize_params"]) and (epoch + 1) % self.save_epoch_freq == 0:
-                self.save(epoch, cur_JI, self.best_metric, type="normal")
-            if not self.opt["optimize_params"]:
-                self.save(epoch, cur_JI, self.best_metric, type="latest")
-            if cur_JI > self.best_metric:
-                self.best_metric = cur_JI
-                if not self.opt["optimize_params"]:
-                    self.save(epoch, cur_JI, self.best_metric, type="best")
+        #         if (not self.opt["optimize_params"]) and (epoch + 1) % self.save_epoch_freq == 0 and self.local_rank==0:
+        #             self.save(epoch, cur_JI, self.best_metric, type="normal")
+        #         if not self.opt["optimize_params"] and self.local_rank==0:
+        #             self.save(epoch, cur_JI, self.best_metric, type="latest")
+        #         if cur_JI > self.best_metric:
+        #             self.best_metric = cur_JI
+        #             if not self.opt["optimize_params"] and self.local_rank==0:
+        #                 self.save(epoch, cur_JI, self.best_metric, type="best")
 
     def calculate_metric_and_update_statistcs(self, output, target, cur_batch_size, loss=None, mode="train"):
         mask = torch.zeros(self.opt["classes"])
@@ -274,7 +314,10 @@ class ISIC2018Trainer:
         else:
             save_filename = '{}_{}.pth'.format(type, self.opt["model_name"])
         save_path = os.path.join(self.checkpoint_dir, save_filename)
-        torch.save(self.model.state_dict(), save_path)
+        if self.opt["multi_gpu"]:
+            torch.save(self.model.module.state_dict(), save_path)
+        else:
+            torch.save(self.model.state_dict(), save_path)
 
     def load(self):
         if self.opt["resume"] is not None:

@@ -247,11 +247,25 @@ def get_model_optimizer_lr_scheduler(opt):
         model = model.to(opt["device"])
         utils.init_weights(model, init_type="kaiming")
     else:
-        model = model.to(opt["device"])
+        # DDP
+        from torch.utils.data.distributed import DistributedSampler
+        # torch.distributed.init_process_group(backend="nccl")
+        local_rank = torch.distributed.get_rank()
+        torch.cuda.set_device(local_rank)
+        device = torch.device("cuda", local_rank)
+        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        model = model.to(device)
         utils.init_weights(model, init_type="kaiming") # xavier kaiming
-        num_gpus = torch.cuda.device_count()
-        available_gpu_ids = list(range(num_gpus))
-        model = torch.nn.DataParallel(model, device_ids=available_gpu_ids)
+        model = torch.nn.parallel.DistributedDataParallel(model,
+                                                      device_ids=[local_rank],
+                                                      output_device=local_rank,
+                                                      find_unused_parameters=False)
+
+        # model = model.to(device)
+        # utils.init_weights(model, init_type="kaiming") # xavier kaiming
+        # num_gpus = torch.cuda.device_count()
+        # available_gpu_ids = list(range(num_gpus))
+        # model = torch.nn.DataParallel(model, device_ids=available_gpu_ids)
 
     # initialize optimizer
     if opt["optimizer_name"] == "SGD":
@@ -438,7 +452,7 @@ def get_model(opt):
         else:
             raise RuntimeError(f"No {opt['model_name']} model available on {opt['dataset_name']} dataset")
 
-    elif opt["dataset_name"] == "ISIC-2018":
+    elif (opt["dataset_name"] == "ISIC-2018") or (opt["dataset_name"] == "Tooth2D-X-Ray-6k"):
         if opt["model_name"] == "PMFSNet":
             # model = PMFSNet(in_channels=opt["in_channels"], out_channels=opt["classes"], dim=opt["dimension"], scaling_version=opt["scaling_version"])
             raise NotImplementedError("PMFSNet has not yet been implemented")
@@ -469,9 +483,12 @@ def get_model(opt):
 
         elif opt["model_name"] == "AttU_Net":
             model = AttU_Net(img_ch=opt["in_channels"], output_ch=opt["classes"])
+
+        elif opt["model_name"] == "BiSeNetV2":
+            model = BiSeNetV2(n_classes=opt["classes"])
             
-        if opt["model_name"] == "TMamba2D":
-            model = TMamba2D(in_channels=opt["in_channels"], classes=opt["classes"], scaling_version=opt["scaling_version"], input_size=opt['crop_size'], high_freq=opt['high_frequency'], low_freq=opt['low_frequency'])
+        elif opt["model_name"] == "TMamba2D":
+            model = TMamba2D(in_channels=opt["in_channels"], classes=opt["classes"], scaling_version=opt["scaling_version"], input_size=opt['resize_shape'], high_freq=opt['high_frequency'], low_freq=opt['low_frequency'])
         else:
             raise RuntimeError(f"No {opt['model_name']} model available on {opt['dataset_name']} dataset")
 

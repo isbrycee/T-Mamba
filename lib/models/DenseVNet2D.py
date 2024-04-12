@@ -8,7 +8,6 @@ import sys
 try:
     from mamba_ssm import Mamba_FFT, Mamba
     from mamba_ssm.ops.triton.layernorm import RMSNorm, layer_norm_fn, rms_norm_fn
-    print('succesfully import mamba_ssm')
 except:
     pass
 

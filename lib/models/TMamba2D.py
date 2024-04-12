@@ -199,6 +199,12 @@ class TMamba2D(nn.Module):
             num_skip_channels = [12, 24, 24]
             units = [8, 16, 16]
             growth_rate = [6, 12, 24]
+        elif scaling_version == "LARGE":
+            kernel_size = [5, 3, 3]
+            num_downsample_channels = [48, 48, 48]
+            num_skip_channels = [24, 48, 48]
+            units = [12, 24, 36]
+            growth_rate = [8, 16, 32]
             
         else:
             raise RuntimeError(f"{scaling_version} scaling version is not available")
@@ -413,7 +419,7 @@ def main():
     input_value = np.random.randn(1, 3, 640, 1280)
     input_value = torch.from_numpy(input_value).float().cuda()
     print(input_value.dtype)
-    model = DenseVNet2D(3, 2).cuda()
+    model = TMamba2D(3, 2).cuda()
     model.train()
     out = model(input_value)
     print(out.shape)
