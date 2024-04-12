@@ -8,6 +8,8 @@ This repository is the official implementation of the [T-Mamba: Frequency-Enhanc
 
 More experiments are running 🔥
 
+Currently, our T-Mamba supports 2D & 3D vision tasks. Welcome to try it for improving your model's performance.
+
 Coming soon...
 
 If u have any quesitons, pls feel free to drop me via isjinghao@gmail.com.
@@ -18,14 +20,16 @@ conda create -n tmamba python=3.9
 conda activate tmamba
 pip install -r requirements.txt
 
+cd ../causal-conv1d
+python setup.py install
+cd Vim-main/mamba
+python setup.py install
+
+=============================
 Requirement specific version:
 mamba_ssm==1.0.1
 causal_conv1d==1.0.0
-
-cd Vim-main/mamba
-python setup.py install
-cd ../causal-conv1d
-python setup.py install
+=============================
 ```
 
 ## Training
