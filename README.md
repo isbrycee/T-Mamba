@@ -1,7 +1,5 @@
+# <img src="images/T-Mamba-logo.png" width="150">
 
-<div style="text-align:center">
-    # <img src="images/T-Mamba-logo.png" width="150">
-</div>
 # T-Mamba
 
 [Jing Hao](https://scholar.google.com/citations?user=E8R8c00AAAAJ&hl=zh-CN), [Lei He](), [Kuo Feng Hung](https://scholar.google.com/citations?user=17V5x14AAAAJ&hl=zh-CN).
