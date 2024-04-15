@@ -35,7 +35,7 @@ class ACC(object):
             self.normalization = nn.Softmax(dim=1)
 
 
-    def __call__(self, input, target):
+    def __call__(self, input, target, no_norm_and_softmax=False):
         """
         ACC
 
@@ -43,6 +43,11 @@ class ACC(object):
         :param target: 标注图像,(B, H, W)
         :return:
         """
+        if no_norm_and_softmax:
+            seg = input.numpy().astype(float)
+            target = target.numpy().astype(float)
+
+            return cal_accuracy(seg, target)
         # 对预测图进行Sigmiod或者Sofmax归一化操作
         if input.size()[-1] == (target.size()[-1] / 4):
             import torch.nn.functional as F

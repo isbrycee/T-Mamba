@@ -11,6 +11,7 @@ import torch.optim as optim
 import torch.nn as nn
 
 import lib.utils as utils
+import lib.models.nnunetv2 as nnunetv2
 
 from .DenseVNet import DenseVNet
 from .DenseVNet2D import DenseVNet2D
@@ -49,8 +50,8 @@ from .CKDNet import DeepLab_Aux
 from .MsRED import Ms_red_v1, Ms_red_v2
 from .MobileNetV2 import MobileNetV2
 
-# from .PMFSNet import PMFSNet
-
+from .PMFSNet import PMFSNet
+from .SwinUMamba import SwinUMamba
 
 def get_model_optimizer_lr_scheduler(opt):
     # initialize model
@@ -166,13 +167,17 @@ def get_model_optimizer_lr_scheduler(opt):
             model = SegFormer(channels=opt["in_channels"], num_classes=opt["classes"])
         elif opt["model_name"] == "BiSeNetV2":
             model = BiSeNetV2(n_classes=opt["classes"])
+        elif opt["model_name"] == "PMFSNet":
+            model = PMFSNet(in_channels=opt["in_channels"], out_channels=opt["classes"], dim=opt["dimension"], scaling_version=opt["scaling_version"])
+        elif opt["model_name"] == "SwinUMamba":
+            model = SwinUMamba(in_chans=opt["in_channels"], out_chans=opt["classes"])
         else:
             raise RuntimeError(f"No {opt['model_name']} model available on {opt['dataset_name']} dataset")
 
     elif opt["dataset_name"] == "MMOTU":
         if opt["model_name"] == "PMFSNet":
             # model = PMFSNet(in_channels=opt["in_channels"], out_channels=opt["classes"], dim=opt["dimension"], scaling_version=opt["scaling_version"])
-            raise NotImplementedError("PMFSNet has not yet been implemented")
+            raise NotImplementedError("PMFcdSNet has not yet been implemented")
 
         elif opt["model_name"] == "MobileNetV2":
             model = MobileNetV2(in_channels=opt["in_channels"], out_channels=opt["classes"], input_size=opt["resize_shape"][0], width_mult=1.)
@@ -259,7 +264,7 @@ def get_model_optimizer_lr_scheduler(opt):
         model = torch.nn.parallel.DistributedDataParallel(model,
                                                       device_ids=[local_rank],
                                                       output_device=local_rank,
-                                                      find_unused_parameters=False)
+                                                      find_unused_parameters=True)
 
         # model = model.to(device)
         # utils.init_weights(model, init_type="kaiming") # xavier kaiming

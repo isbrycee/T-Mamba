@@ -9,7 +9,7 @@
 import os
 import cv2
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 from tqdm import tqdm
 
 import torch
@@ -43,7 +43,9 @@ class ISIC2018Tester:
         dir_path, image_name = os.path.split(image_path)
         dot_pos = image_name.find(".")
         file_name = image_name[:dot_pos]
-        segmentation_image_path = os.path.join(dir_path, file_name + "_segmentation" + ".jpg")
+        if self.opt["save_dir"]:
+            dir_path = self.opt["save_dir"]
+        segmentation_image_path = os.path.join(dir_path, file_name + "_segmentation" + ".png")
 
         self.model.eval()
         with torch.no_grad():
@@ -54,8 +56,61 @@ class ISIC2018Tester:
         segmented_image = torch.argmax(output, dim=1).squeeze(0).to(dtype=torch.uint8).cpu().numpy()
         segmented_image = cv2.resize(segmented_image, (w, h), interpolation=cv2.INTER_AREA)
         segmented_image[segmented_image == 1] = 255
-        cv2.imwrite(segmentation_image_path, segmented_image)
-        print("Save segmented image to {}".format(segmentation_image_path))
+
+        # cv2.imwrite(segmentation_image_path, segmented_image)
+        # print("Save segmented image to {}".format(segmentation_image_path))
+        if self.opt["is_visual"]:
+            mask = segmented_image
+            print(mask.shape)
+            rect = (1770, 417, 2031, 660)
+            # # Create an RGBA version of the mask
+            # mask_rgba = np.zeros((mask.shape[0], mask.shape[1], 4), dtype=np.uint8)
+            # # Set transparent red for white pixels in the mask
+            # mask_rgba[mask == 255] = [255, 0, 0, 50]  # Transparent red (R,G,B,A)
+            # # Create a PIL image from the RGBA mask
+            # mask_pil = Image.fromarray(mask_rgba, 'RGBA')
+            # # Composite the RGBA mask onto the original PIL image
+            # result = Image.alpha_composite(image_pil.convert("RGBA"), mask_pil)
+            # result.save(segmentation_image_path)
+            # print("Save segmented image to {}".format(segmentation_image_path))
+
+            # Create an RGBA version of the mask
+            mask_rgba = np.zeros((mask.shape[0], mask.shape[1], 4), dtype=np.uint8)
+            mask_rgba[mask == 255] = [255, 0, 0, 60]  # Transparent red (R,G,B,A)
+
+            # Create a PIL image from the RGBA mask
+            mask_pil = Image.fromarray(mask_rgba, 'RGBA')
+
+            # Composite the RGBA mask onto the original PIL image
+            result = Image.alpha_composite(image_pil.convert("RGBA"), mask_pil)
+            # Convert rectangle coordinates to integers
+            rect = [int(coord) for coord in rect]
+
+            # Crop the rectangle from the original image
+            cropped_image = result.crop(rect)
+            
+            # Resize the cropped rectangle to desired size
+            new_size = (int((rect[2]-rect[0]) * 2), int((rect[3]-rect[1]) * 2))  # Increase size by 50%
+            enlarged_cropped_image = cropped_image.resize(new_size)
+            
+            # Paste the enlarged rectangle onto the result image at the bottom right corner
+            result.paste(enlarged_cropped_image, (result.width - new_size[0], result.height - new_size[1]))
+            
+            # Create ImageDraw object
+            draw = ImageDraw.Draw(result)
+            
+            # Draw a rectangle around the enlarged area
+            draw.rectangle([(result.width - new_size[0], result.height - new_size[1]), (result.width, result.height)], outline="blue", width=2)
+            
+            # Draw a rectangle around the original selected area
+            draw.rectangle(rect, outline="blue", width=2)
+            
+            # Draw a line from the top left corner of the rectangle to the bottom right corner of the result image
+            line_color = (0, 255, 0)  # Green color for the line
+            line_thickness = 2
+            draw.line([(rect[2], rect[3]), (result.width - new_size[0], result.height - new_size[1])], fill=line_color, width=line_thickness)
+            result.save(segmentation_image_path)
+            print("Save segmented image to {}".format(segmentation_image_path))
 
     def evaluation(self, dataloader):
         self.reset_statistics_dict()

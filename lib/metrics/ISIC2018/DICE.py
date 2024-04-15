@@ -33,7 +33,7 @@ class DICE(object):
             self.normalization = nn.Softmax(dim=1)
 
 
-    def __call__(self, input, target):
+    def __call__(self, input, target, no_norm_and_softmax=False):
         """
         计算DICE系数
         Args:
@@ -43,6 +43,11 @@ class DICE(object):
         Returns:
         """
         # 对预测图进行Sigmiod或者Sofmax归一化操作
+        if no_norm_and_softmax:
+            seg = input.numpy().astype(float)
+            target = target.numpy().astype(float)
+            return cal_dsc(seg, target)
+
         if input.size()[-1] == (target.size()[-1] / 4):
             input = F.interpolate(input, size=(640, 1280), mode='bilinear', align_corners=False)
         input = self.normalization(input)
