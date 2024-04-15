@@ -1,4 +1,7 @@
-# <img src="images/T-Mamba-logo.png" width="150">
+<p align="center">
+  <img src="images/T-Mamba-logo.png" width="150">
+</p>
+
 
 # T-Mamba
 
