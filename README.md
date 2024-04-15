@@ -1,4 +1,4 @@
-# <img src="images/T-Mamba-logo.png" width="150"> 
+# <img src="images/T-Mamba-logo.png" width="150" div align=center > 
 
 # T-Mamba
 
