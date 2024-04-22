@@ -15,7 +15,7 @@ from lib import utils, dataloaders, models, metrics, testers
 
 params_3D_CBCT_Tooth = {
     # ——————————————————————————————————————————————    Launch Initialization    —————————————————————————————————————————————————
-    "CUDA_VISIBLE_DEVICES": "0",
+    "CUDA_VISIBLE_DEVICES": "6",
     "seed": 1777777,
     "cuda": True,
     "benchmark": False,
@@ -64,6 +64,8 @@ params_3D_CBCT_Tooth = {
         },
     "resume": None,
     "pretrain": None,
+    "high_frequency": 0.9,
+    "low_frequency": 0.1,
     # ——————————————————————————————————————————————    Optimizer     ——————————————————————————————————————————————————————
     "optimizer_name": "Adam",
     "learning_rate": 0.0005,
@@ -228,7 +230,72 @@ params_ISIC_2018 = {
     "terminal_show_freq": 20,
     "save_epoch_freq": 50,
 }
-
+params_Tooth_2D_X_ray = {
+    # ——————————————————————————————————————————————     Launch Initialization    ———————————————————————————————————————————————————
+    "CUDA_VISIBLE_DEVICES": "7",
+    "seed": 1777777,
+    "cuda": True,
+    "benchmark": False,
+    "deterministic": True,
+    # —————————————————————————————————————————————     Preprocessing       ————————————————————————————————————————————————————
+    "resize_shape": (640, 1280),
+    # ——————————————————————————————————————————————    Data Augmentation    ——————————————————————————————————————————————————————
+    "augmentation_p": 0.1,
+    "color_jitter": 0.37,
+    "random_rotation_angle": 15,
+    "normalize_means": (0.50297405, 0.54711632, 0.71049083),
+    "normalize_stds": (0.18653496, 0.17118206, 0.17080363),
+    # —————————————————————————————————————————————    Data Loading     ——————————————————————————————————————————————————————
+    "dataset_name": "Tooth2D-X-Ray-6k/",
+    "dataset_path": r"./datasets/Tooth2D-X-Ray-6k/",
+    "batch_size": 1,
+    "num_workers": 4,
+    # —————————————————————————————————————————————    Model     ——————————————————————————————————————————————————————
+    "model_name": "TMamba2D",
+    "in_channels": 3,
+    "classes": 2,
+    "index_to_class_dict":
+    {
+        0: "background",
+        1: "foreground"
+    },
+    "resume": None,
+    "pretrain": None,
+    "high_frequency": 0.9,
+    "low_frequency": 0.1,
+    # ——————————————————————————————————————————————    Optimizer     ——————————————————————————————————————————————————————
+    "optimizer_name": "AdamW",
+    "learning_rate": 0.005, # 0.005 0.0025
+    "weight_decay": 0.00005,
+    "momentum": 0.8,
+    # ———————————————————————————————————————————    Learning Rate Scheduler     —————————————————————————————————————————————————————
+    "lr_scheduler_name": "MultiStepLR",
+    "gamma": 0.1,
+    "step_size": 1,
+    "milestones": [24, 28,], # [20, 26,]
+    "T_max": 2,
+    "T_0": 2,
+    "T_mult": 2,
+    "mode": "max",
+    "patience": 1,
+    "factor": 0.5,
+    # ————————————————————————————————————————————    Loss And Metric     ———————————————————————————————————————————————————————
+    "metric_names": ["DSC", "IoU", "JI", "ACC"],
+    "loss_function_name": "DiceLoss",
+    "class_weight": [0.029, 1-0.029],
+    "sigmoid_normalization": False,
+    "dice_loss_mode": "extension",
+    "dice_mode": "standard",
+    # —————————————————————————————————————————————   Training   ——————————————————————————————————————————————————————
+    "optimize_params": False,
+    "run_dir": r"./runs",
+    "start_epoch": 0,
+    "end_epoch": 150,
+    "best_metric": 0,
+    "update_weight_freq": 1,
+    "terminal_show_freq": 1,
+    "save_epoch_freq": 10,
+}
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -238,6 +305,9 @@ def parse_args():
     parser.add_argument("--dimension", type=str, default="3d", help="dimension of dataset images and models")
     parser.add_argument("--scaling_version", type=str, default="TINY", help="scaling version of PMFSNet")
     parser.add_argument("--image_path", type=str, default=None, help="path of inferred image")
+    parser.add_argument("--image_dir", type=str, default=None, help="path of inferred image dir")
+    parser.add_argument("--save_dir", type=str, default=None, help="path of inferred image dir")
+    parser.add_argument('--is_visual', action='store_true')
     args = parser.parse_args()
     return args
 
@@ -253,6 +323,8 @@ def main():
         params = params_MMOTU
     elif args.dataset == "ISIC-2018":
         params = params_ISIC_2018
+    elif args.dataset == "Tooth2D-X-Ray-6k":
+        params = params_Tooth_2D_X_ray
     else:
         raise RuntimeError(f"No {args.dataset} dataset available")
 
@@ -265,7 +337,11 @@ def main():
     params["pretrain"] = args.pretrain_weight
     params["dimension"] = args.dimension
     params["scaling_version"] = args.scaling_version
-    if args.image_path is None:
+    params["save_dir"] = args.save_dir
+    params["is_visual"] = args.is_visual
+
+    
+    if args.image_path is None and args.image_dir is None:
         raise RuntimeError("image path cannot be None")
 
     # launch initialization
@@ -294,7 +370,34 @@ def main():
     print("Complete loading training weights")
 
     # evaluate valid set
-    tester.inference(args.image_path)
+    if args.dataset == "3D-CBCT-Tooth":
+        if args.image_dir:
+            ngz_files = []
+            for root, dirs, files in os.walk(args.image_dir):
+                for file in files:
+                    if file.endswith('.nii.gz'):
+                        ngz_files.append(os.path.join(root, file))
+            for img in ngz_files:
+                tester.inference(img)
+                # with open('/root/paddlejob/workspace/env_run/output/haojing08/PMFSNet-master-multigpu/TMamba3D_GSM_weights_1stage.txt', 'a') as ff:
+                #     ff.write(img)
+                # with open('/root/paddlejob/workspace/env_run/output/haojing08/PMFSNet-master-multigpu/TMamba3D_GSM_weights_2stage.txt', 'a') as ff:
+                #     ff.write(img)
+                # with open('/root/paddlejob/workspace/env_run/output/haojing08/PMFSNet-master-multigpu/TMamba3D_GSM_weights_3stage.txt', 'a') as ff:
+                #     ff.write(img)
+        else:
+            tester.inference(args.image_path)
+    elif args.dataset == "Tooth2D-X-Ray-6k":
+        if args.image_dir:
+            valid_image = []
+            for root, dirs, files in os.walk(args.image_dir):
+                for file in files:
+                    if file.endswith('.jpg'):
+                        valid_image.append(os.path.join(root, file))
+            for img in valid_image:
+                tester.inference(img)
+        else:
+            tester.inference(args.image_path)
 
 
 if __name__ == '__main__':
