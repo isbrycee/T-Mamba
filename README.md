@@ -37,16 +37,18 @@ causal_conv1d==1.0.0
 
 ## Training
 ```sh
-sh train.sh # for 3D
-sh 2d_train.sh # for 2D
+sh train_3d.sh # for 3D
+sh train_2d.sh # for 2D
 ```
 
-## Testing
+## Testing (for evaluations)
 ```sh
-sh test.sh
+sh test_3d.sh # for 3D
+sh test_2d.sh # for 2D
 ```
 
 ## Inference
 ```sh
-sh infer.sh
+sh infer_3d.sh # for 3D
+sh infer_2d.sh # for 2D
 ```
