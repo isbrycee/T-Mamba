@@ -11,6 +11,10 @@ This repository is the official implementation of the [T-Mamba: Frequency-Enhanc
 
 More experiments are running 🔥
 
+We are conducting more experiments and analysis on 3D CBCT and 2D X-ray images, and will update the whole manuscript. 🏃‍♂️
+
+The code, pre-trained weights, and datasets will be fully available.
+
 Currently, our T-Mamba supports 2D & 3D vision tasks. Welcome to try it for improving your model's performance.
 
 Coming soon...
