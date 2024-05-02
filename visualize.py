@@ -204,42 +204,68 @@ def visualize_all_data_single_fig(model_names, original_dir, label_dir, seg_dir,
     plt.close(fig_all)
     print(f"Saved all samples visualization to {all_samples_path}")
         
-
 def place_rectangle_and_enlarge(image, rect=None):
-    if rect is None:
-        return image, "None", "None"  # No rectangle provided, return the image unchanged.
-    
-    # Example of rect: (x, y, width, height)
-    rect_patch = Rectangle((rect[0], rect[1]), rect[2], rect[3], linewidth=2, edgecolor='r', facecolor='none')
+    if rect is None or image is None:
+        print("No rectangle provided or image is None.")
+        return image, None, None, None
+
+    # Validate the rectangle dimensions
+    if any([
+        rect[0] < 0, rect[1] < 0, 
+        rect[0] + rect[2] > image.shape[1], 
+        rect[1] + rect[3] > image.shape[0], 
+        rect[2] <= 0, rect[3] <= 0
+    ]):
+        print(f"Invalid rectangle coordinates: {rect}")
+        return image, None, None, None
 
     # Crop the region of interest from the image
     cropped_region = image[rect[1]:rect[1]+rect[3], rect[0]:rect[0]+rect[2]]
+
+    # Ensure the cropped region is not empty
+    if cropped_region.size == 0 :
+        print(f"Cropped region is empty")
+        return image, None, None, None
     
-    # Calculate position for the enlarged rectangle at the bottom right of the image
+    # Convert image data type to uint8 if necessary
+    if cropped_region.dtype != np.uint8:
+        if cropped_region.max() > 255:
+            print("Cropped pixel values are out of range for uint8 type.")
+            return image, None, None, None
+        cropped_region = cropped_region.astype(np.uint8)
+
+    print(f"Cropped region shape: {cropped_region.shape}, Rect: {rect}")
+
+    # Calculate the enlarged rectangle's position and size
     enlarged_rect = (
-        image.shape[1] - rect[2] * 2 - 10,  # Double the size for enlargement and position
+        image.shape[1] - rect[2] * 2 - 10,
         image.shape[0] - rect[3] * 2 - 10,
-        rect[2] * 2,  # Double width
-        rect[3] * 2   # Double height
+        rect[2] * 2,
+        rect[3] * 2
     )
-    # Resize the cropped region to fill the enlarged rectangle
-    enlarged_region = cv2.resize(cropped_region, (enlarged_rect[2], enlarged_rect[3]), interpolation=cv2.INTER_LINEAR)
-    
-    # Place the enlarged region into a copy of the original image (for display purposes only)
+
+    try:
+        # Resize the cropped region to fill the enlarged rectangle
+        enlarged_region = cv2.resize(cropped_region, (enlarged_rect[2], enlarged_rect[3]), interpolation=cv2.INTER_LINEAR)
+    except Exception as e:
+        print(f"Error resizing image: {e}")
+        return image, None, None, None
+
+    # Place the enlarged region into a copy of the original image (for visualization only)
     image_with_enlarged = np.copy(image)
     image_with_enlarged[enlarged_rect[1]:enlarged_rect[1]+enlarged_rect[3], enlarged_rect[0]:enlarged_rect[0]+enlarged_rect[2]] = enlarged_region
     
-    enlarged_patch = Rectangle((enlarged_rect[0], enlarged_rect[1]), enlarged_rect[2], enlarged_rect[3], 
-                               linewidth=2, edgecolor='yellow', facecolor='none')
-    
-    # Create a connection line between the centers of the original and enlarged rectangles
+    rect_patch = Rectangle((rect[0], rect[1]), rect[2], rect[3], linewidth=5, edgecolor='r', facecolor='none')
+    enlarged_patch = Rectangle((enlarged_rect[0], enlarged_rect[1]), enlarged_rect[2], enlarged_rect[3], linewidth=5, edgecolor='yellow', facecolor='none')
+
     connection_line = ConnectionPatch(
         xyA=((rect[0] + rect[2]/2), (rect[1] + rect[3]/2)),
         xyB=((enlarged_rect[0] + enlarged_rect[2]/2), (enlarged_rect[1] + enlarged_rect[3]/2)),
         coordsA="data", coordsB="data",
-        arrowstyle="-", color="blue", linewidth=2)
+        arrowstyle="->", color="blue", linewidth=5)
 
     return image_with_enlarged, rect_patch, enlarged_patch, connection_line
+
 
 def visualize_all_models_comprehensive(model_names, original_dir, label_dir, seg_dir, output_dir, top_k):
     model_dirs = {model_name: os.path.join(seg_dir, model_name) for model_name in model_names}
@@ -299,7 +325,8 @@ def visualize_all_models_comprehensive(model_names, original_dir, label_dir, seg
     
 
 def topk_difference_mse_data(label_path, model_dirs, top_k):
-    """Calculate the top k MSE differences for label vs. segmented images from various models.
+    """Calculate the top k MSE differences for label vs. segmented images from various models,
+    returning only the best slice per sample based on MSE differences.
     
     Args:
         label_path (str): Path to the directory containing label images.
@@ -310,13 +337,16 @@ def topk_difference_mse_data(label_path, model_dirs, top_k):
         list: Sorted list of tuples containing file name, slice index, and MSE difference.
     """
     label_files = sorted(f for f in os.listdir(label_path) if f.endswith('.nii.gz'))
-    mse_differences = []
+    best_slices_per_file = []
 
     for file_name in label_files:
         label_file_path = os.path.join(label_path, file_name)
         label_image = load_nii(label_file_path)
         
         label_image = (label_image > 0).astype(int)
+
+        best_slice = None
+        best_mse_diff = float('-inf')  # Initialize with a very low number
 
         # Focusing on slices around the middle of the volume
         middle_index = label_image.shape[2] // 2
@@ -347,18 +377,26 @@ def topk_difference_mse_data(label_path, model_dirs, top_k):
                         our_mse = normalized_mse['Ours']
                         other_mses = sum(v for k, v in normalized_mse.items() if k != 'Ours')
                         mse_difference = other_mses - our_mse
-                        mse_differences.append((file_name, slice_idx, mse_difference))
 
-    # Return top k results with the highest differences where 'Ours' performed better
-    return sorted(mse_differences, key=lambda x: x[2], reverse=True)[:top_k]
+                        # Only keep the best slice for each file
+                        if mse_difference > best_mse_diff:
+                            best_mse_diff = mse_difference
+                            best_slice = (file_name, slice_idx, mse_difference)
+
+        if best_slice:
+            best_slices_per_file.append(best_slice)
+
+    # Return the top k best slices from all files, sorted by the highest MSE differences
+    return sorted(best_slices_per_file, key=lambda x: x[2], reverse=True)[:top_k]
 
 def main():
     # Example usage:
     slice_offsets = [-3,-2,0,1,2,3]  # Example slice indices
 
-    model_names =  ['Ours','nnFormer', 'DenseVNet', 'PMFSNet','SwinUNETR']  
+    model_names =  ['Ours','nnFormer', 'DenseVNet', 'PMFSNet','SwinUNETR']
+    BASE_DIR = os.getcwd()  
    
-    original_dir, label_dir, seg_dir, output_dir= '/root/work_dir/PMFSNet/datasets/NC-release-data-checked/valid/images','/root/work_dir/PMFSNet/datasets/NC-release-data-checked/valid/labels', '/root/work_dir/Result/test','/root/work_dir/Result/test/result'
+    original_dir, label_dir, seg_dir, output_dir= f'{BASE_DIR}/datasets/NC-release-data-checked/valid/images',f'{BASE_DIR}/datasets/NC-release-data-checked/valid/labels', f'{BASE_DIR}/Result/test',f'{BASE_DIR}/Result/test/result'
     #visualize_all_data(model_names, original_dir, label_dir, seg_dir, output_dir)         #Middle index, all fig for every sample saved to save_dir
     #for slice_offset in slice_offsets:
         #visualize_all_data_single_fig(model_names, original_dir, label_dir,seg_dir, output_dir,slice_offset=slice_offset) #slice index offset, all sample in single fig  saved to save_dir
