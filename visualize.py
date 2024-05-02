@@ -466,7 +466,7 @@ def main():
     model_names =  ['Ours','nnFormer', 'DenseVNet', 'PMFSNet','SwinUNETR']  
     BASE_DIR = os.getcwd()  
     print(BASE_DIR)
-    original_dir, label_dir, seg_dir, output_dir= '/root/work_dir/PMFSNet/datasets/NC-release-data-checked/valid/images','/root/work_dir/PMFSNet/datasets/NC-release-data-checked/valid/labels', '/root/work_dir/Result/test','/root/work_dir/Result/test/result'
+    original_dir, label_dir, seg_dir, output_dir= f'{BASE_DIR}/datasets/NC-release-data-checked/valid/images',f'{BASE_DIR}/datasets/NC-release-data-checked/valid/labels', f'{BASE_DIR}/Result/test',f'{BASE_DIR}/Result/test/result'
     #visualize_all_data(model_names, original_dir, label_dir, seg_dir, output_dir)         #Middle index, all fig for every sample saved to save_dir
     #for slice_offset in slice_offsets:
         #visualize_all_data_single_fig(model_names, original_dir, label_dir,seg_dir, output_dir,slice_offset=slice_offset) #slice index offset, all sample in single fig  saved to save_dir
