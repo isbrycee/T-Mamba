@@ -55,4 +55,5 @@ sh test_2d.sh # for 2D
 ```sh
 sh infer_3d.sh # for 3D
 sh infer_2d.sh # for 2D
+sh inference_all_3d.sh #for 3D models=['T-Mamba','nnFormer', 'DenseVNet', 'PMFSNet','SwinUNETR']
 ```
