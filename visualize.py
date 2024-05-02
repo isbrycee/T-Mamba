@@ -204,6 +204,7 @@ def visualize_all_data_single_fig(model_names, original_dir, label_dir, seg_dir,
     plt.close(fig_all)
     print(f"Saved all samples visualization to {all_samples_path}")
         
+
 def place_rectangle_and_enlarge(image, rect=None):
     if rect is None or image is None:
         print("No rectangle provided or image is None.")
@@ -266,8 +267,7 @@ def place_rectangle_and_enlarge(image, rect=None):
 
     return image_with_enlarged, rect_patch, enlarged_patch, connection_line
 
-
-def visualize_all_models_comprehensive(model_names, original_dir, label_dir, seg_dir, output_dir, top_k):
+def visualize_all_models_comprehensive(model_names, original_dir, label_dir, seg_dir, output_dir, top_k,patch=None):
     model_dirs = {model_name: os.path.join(seg_dir, model_name) for model_name in model_names}
     os.makedirs(output_dir, exist_ok=True)
     top_k_results = topk_difference_mse_data(label_dir, model_dirs, top_k)
@@ -293,9 +293,12 @@ def visualize_all_models_comprehensive(model_names, original_dir, label_dir, seg
         axes[idx, 0].axis('off')
 
         axes[idx, 1].imshow(label_slice, cmap='gray')
-        axes[idx, 1].add_patch(rect_patch)
-        axes[idx, 1].add_patch(enlarged_patch)
-        axes[idx, 1].add_artist(connection_line)
+        if rect_patch is not None and patch is not None:
+           axes[idx, 1].add_patch(rect_patch)
+        if enlarged_patch is not None and patch is not None:
+           axes[idx, 1].add_patch(enlarged_patch)
+        if connection_line is not None and patch is not None:
+           axes[idx, 1].add_artist(connection_line)
         axes[idx, 1].set_title('Label Image')
         axes[idx, 1].axis('off')
 
@@ -303,8 +306,14 @@ def visualize_all_models_comprehensive(model_names, original_dir, label_dir, seg
             seg_path = os.path.join(model_dirs[model_name], file_name.replace('.nii.gz', '_segmentation.npy'))
             if os.path.exists(seg_path):
                 segmentation_image = load_npy(seg_path)
-                segmentation_slice, _, _, _ = place_rectangle_and_enlarge(np.rot90(segmentation_image[:, :, slice_idx],-1), rect)
+                segmentation_slice, rect_patch, enlarged_patch, connection_line = place_rectangle_and_enlarge(np.rot90(segmentation_image[:, :, slice_idx],-1), rect)
                 axes[idx, m_idx + 2].imshow(segmentation_slice, cmap='gray')
+                if rect_patch is not None and patch is not None:
+                    axes[idx, m_idx + 2].add_patch(rect_patch)
+                if enlarged_patch is not None and patch is not None:
+                    axes[idx, m_idx + 2].add_patch(enlarged_patch)
+                if connection_line is not None and patch is not None:
+                    axes[idx, m_idx + 2].add_artist(connection_line)
                 axes[idx, m_idx + 2].set_title(f'{model_name} Segmented')
                 axes[idx, m_idx + 2].axis('off')
             else:
@@ -312,7 +321,7 @@ def visualize_all_models_comprehensive(model_names, original_dir, label_dir, seg
                 axes[idx, m_idx + 2].set_visible(False)
 
     plt.tight_layout()
-    save_path = os.path.join(output_dir, f'comprehensive_comparison_{top_k}.png')
+    save_path = os.path.join(output_dir, f'comprehensive_comparison_top{top_k}.png')
     plt.savefig(save_path)
     plt.close()
     print(f"Saved comprehensive visualization of top {top_k} data to {save_path}")
@@ -322,6 +331,65 @@ def visualize_all_models_comprehensive(model_names, original_dir, label_dir, seg
         file.write("Filename, Slice ,MSE\n")
         for filename, slice, mse in top_k_results:
             file.write(f"{filename}, {slice}, {mse}\n")
+            
+
+def visualize_specified_data(model_names, original_dir, label_dir, seg_dir, output_dir, specified_results, patch=None):
+    model_dirs = {model_name: os.path.join(seg_dir, model_name) for model_name in model_names}
+    os.makedirs(output_dir, exist_ok=True)
+
+    num_rows = len(specified_results)
+    num_cols = 2 + len(model_names)
+
+    fig, axes = plt.subplots(num_rows, num_cols, figsize=(num_cols * 5, num_rows * 5))
+
+    for idx, file_name in enumerate(specified_results):
+        full_file_name = f"{file_name}.nii.gz"
+        original_image = nib.load(os.path.join(original_dir, full_file_name)).get_fdata()
+        label_image = nib.load(os.path.join(label_dir, full_file_name)).get_fdata()
+        
+        label_image = (label_image > 0).astype(int)
+        slice_idx = original_image.shape[2] // 2  # Assuming middle slice for visualization
+
+        original_slice = np.rot90(original_image[:, :, slice_idx], -1)
+        label_slice, rect_patch, enlarged_patch, connection_line = place_rectangle_and_enlarge(np.rot90(label_image[:, :, slice_idx], -1), patch)
+
+        axes[idx, 0].imshow(original_slice, cmap='gray')
+        axes[idx, 0].set_title(f'Original: {file_name}')
+        axes[idx, 0].axis('off')
+
+        axes[idx, 1].imshow(label_slice, cmap='gray')
+        if rect_patch is not None:
+            axes[idx, 1].add_patch(rect_patch)
+        if enlarged_patch is not None:
+            axes[idx, 1].add_patch(enlarged_patch)
+        if connection_line is not None:
+            axes[idx, 1].add_artist(connection_line)
+        axes[idx, 1].set_title('Label Image')
+        axes[idx, 1].axis('off')
+
+        for m_idx, model_name in enumerate(model_names):
+            seg_path = os.path.join(model_dirs[model_name], full_file_name.replace('.nii.gz', '_segmentation.npy'))
+            if os.path.exists(seg_path):
+                segmentation_image = load_npy(seg_path)
+                segmentation_slice, rect_patch, enlarged_patch, connection_line = place_rectangle_and_enlarge(np.rot90(segmentation_image[:, :, slice_idx], -1), patch)
+                axes[idx, m_idx + 2].imshow(segmentation_slice, cmap='gray')
+                if rect_patch is not None:
+                    axes[idx, m_idx + 2].add_patch(rect_patch)
+                if enlarged_patch is not None:
+                    axes[idx, m_idx + 2].add_patch(enlarged_patch)
+                if connection_line is not None:
+                    axes[idx, m_idx + 2].add_artist(connection_line)
+                axes[idx, m_idx + 2].set_title(f'{model_name} Segmented')
+                axes[idx, m_idx + 2].axis('off')
+            else:
+                print(f"Loading failed for: {seg_path}")
+                axes[idx, m_idx + 2].set_visible(False)
+
+    plt.tight_layout()
+    save_path = os.path.join(output_dir, 'specified_models_comprehensive_comparison.png')
+    plt.savefig(save_path)
+    plt.close()
+    print(f"Saved specified comprehensive visualization to {save_path}")
     
 
 def topk_difference_mse_data(label_path, model_dirs, top_k):
@@ -376,7 +444,9 @@ def topk_difference_mse_data(label_path, model_dirs, top_k):
                     if 'Ours' in normalized_mse:
                         our_mse = normalized_mse['Ours']
                         other_mses = sum(v for k, v in normalized_mse.items() if k != 'Ours')
-                        mse_difference = other_mses - our_mse
+                        num_other_models = len(slice_mse_models) - 1  # Subtracting 'Ours'
+                        average_other_mse = other_mses / num_other_models if num_other_models > 0 else 0
+                        mse_difference = average_other_mse - our_mse
 
                         # Only keep the best slice for each file
                         if mse_difference > best_mse_diff:
@@ -393,15 +463,19 @@ def main():
     # Example usage:
     slice_offsets = [-3,-2,0,1,2,3]  # Example slice indices
 
-    model_names =  ['Ours','nnFormer', 'DenseVNet', 'PMFSNet','SwinUNETR']
+    model_names =  ['Ours','nnFormer', 'DenseVNet', 'PMFSNet','SwinUNETR']  
     BASE_DIR = os.getcwd()  
-   
-    original_dir, label_dir, seg_dir, output_dir= f'{BASE_DIR}/datasets/NC-release-data-checked/valid/images',f'{BASE_DIR}/datasets/NC-release-data-checked/valid/labels', f'{BASE_DIR}/Result/test',f'{BASE_DIR}/Result/test/result'
+    print(BASE_DIR)
+    original_dir, label_dir, seg_dir, output_dir= '/root/work_dir/PMFSNet/datasets/NC-release-data-checked/valid/images','/root/work_dir/PMFSNet/datasets/NC-release-data-checked/valid/labels', '/root/work_dir/Result/test','/root/work_dir/Result/test/result'
     #visualize_all_data(model_names, original_dir, label_dir, seg_dir, output_dir)         #Middle index, all fig for every sample saved to save_dir
     #for slice_offset in slice_offsets:
         #visualize_all_data_single_fig(model_names, original_dir, label_dir,seg_dir, output_dir,slice_offset=slice_offset) #slice index offset, all sample in single fig  saved to save_dir
-    visualize_all_models_comprehensive(model_names, original_dir, label_dir,seg_dir, output_dir,top_k=15)
+    visualize_all_models_comprehensive(model_names, original_dir, label_dir,seg_dir, output_dir,top_k=15, patch="yes")
     
+    #specified_results = ["1000813648_20180116","1000915187_20191217","1001055861_20180109","1001162439_20200910"]
+    #visualize_specified_data(model_names, original_dir, label_dir, seg_dir, output_dir, specified_results, patch=None)
+    
+   
 
 
 main()
