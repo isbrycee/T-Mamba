@@ -377,16 +377,19 @@ def main():
                 for file in files:
                     if file.endswith('.nii.gz'):
                         ngz_files.append(os.path.join(root, file))
+            
             for img in ngz_files:
-                tester.inference(img)
+                tester.inference(img,args.save_dir)
                 # with open('/root/paddlejob/workspace/env_run/output/haojing08/PMFSNet-master-multigpu/TMamba3D_GSM_weights_1stage.txt', 'a') as ff:
                 #     ff.write(img)
                 # with open('/root/paddlejob/workspace/env_run/output/haojing08/PMFSNet-master-multigpu/TMamba3D_GSM_weights_2stage.txt', 'a') as ff:
                 #     ff.write(img)
                 # with open('/root/paddlejob/workspace/env_run/output/haojing08/PMFSNet-master-multigpu/TMamba3D_GSM_weights_3stage.txt', 'a') as ff:
                 #     ff.write(img)
+        elif args.image_path:
+            tester.inference(args.image_path,args.save_dir)
         else:
-            tester.inference(args.image_path)
+            print("error loading 3D CBCT DATA no directory or path specified")
     elif args.dataset == "Tooth2D-X-Ray-6k":
         if args.image_dir:
             valid_image = []
