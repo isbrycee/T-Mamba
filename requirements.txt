@@ -7,7 +7,6 @@ nibabel==5.2.0
 nni==3.0
 numpy==1.24.1
 opencv_python==4.8.1.78
-Pillow==9.3.0
 Pillow==10.2.0
 pydensecrf==1.0rc3
 scipy==1.11.4
