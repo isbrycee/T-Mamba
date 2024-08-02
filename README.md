@@ -7,7 +7,8 @@
 
 [Jing Hao](https://scholar.google.com/citations?user=E8R8c00AAAAJ&hl=zh-CN), [Lei He](), [Kuo Feng Hung](https://scholar.google.com/citations?user=17V5x14AAAAJ&hl=zh-CN).
 
-This repository is the official implementation of the [T-Mamba: Frequency-Enhanced Gated Long-Range Dependency for Tooth 3D CBCT Segmentation](https://arxiv.org/pdf/2404.01065.pdf).
+This repository is the official implementation of the [T-Mamba: A unified framework with Long-Range Dependency in dual-domain for 2D & 3D Tooth Segmentation
+](https://arxiv.org/pdf/2404.01065.pdf).
 
 More experiments are running 🔥
 
