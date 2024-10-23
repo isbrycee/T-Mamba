@@ -18,7 +18,7 @@ The code, pre-trained weights, and datasets will be fully available.
 
 Currently, our T-Mamba supports 2D & 3D vision tasks. Welcome to try it for improving your model's performance.
 
-Coming soon...
+The proposed TED3 dataset is available at: [Hugging Face](https://huggingface.co/datasets/Bryceee/TED3).
 
 If u have any quesitons, pls feel free to drop me via isjinghao@gmail.com.
 
