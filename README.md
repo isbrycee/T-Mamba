@@ -28,9 +28,9 @@ conda create -n tmamba python=3.9
 conda activate tmamba
 pip install -r requirements.txt
 
-cd ../causal-conv1d
+cd Vim-main/causal-conv1d
 python setup.py install
-cd Vim-main/mamba
+cd ../mamba
 python setup.py install
 
 =============================
