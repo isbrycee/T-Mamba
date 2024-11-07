@@ -10,7 +10,6 @@ opencv_python==4.8.1.78
 Pillow==10.2.0
 pydensecrf==1.0rc3
 scipy==1.11.4
-SimpleITK==2.2.1
 SimpleITK==2.3.1
 skimage==0.0
 Surface_Distance_Based_Measures==0.1
