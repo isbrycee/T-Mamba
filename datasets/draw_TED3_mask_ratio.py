@@ -27,8 +27,8 @@ def calculate_pixel_ratio(folder_path):
     return ratios
 
 # 输入两个图像文件夹路径
-folder_path1 = "/Users/haojing08/Documents/paper-writing/T-Mamba/Tooth-2D-X-Ray-6k/train/annotations"
-folder_path2 = "/Users/haojing08/Documents/paper-writing/T-Mamba/Tooth-2D-X-Ray-6k/test/annotations"
+folder_path1 = "/media/hust/disk1/haojing/dataset/TED3/train/annotations"
+folder_path2 = "/media/hust/disk1/haojing/dataset/TED3/test/annotations"
 
 # 分别计算两个文件夹中像素比例
 ratios1 = calculate_pixel_ratio(folder_path1)
@@ -57,15 +57,18 @@ plt.figure(figsize=(10, 6))
 # plt.scatter(x1, y1, label="Training set", marker='o', color='blue')
 # plt.scatter(x2, y2, label="Test set", marker='o', color='red')
 # 绘制拟合曲线
+# 设置 x 轴和 y 轴坐标刻度的大小
+plt.xticks(fontsize=14)
+plt.yticks(fontsize=14)
 
 l1,=plt.plot(x1, y1, color='red', label='Training set',  linestyle='-')
 l2,=plt.plot(x2, y2, color='blue', label='Test set', linestyle='--') # , linestyle='--
 
 # plt.plot(x2, func(x2, *popt2), color='red', linestyle='--')
-plt.xlabel('Ratio of Tooth area to image area', fontdict={'family' : 'Times New Roman', 'size': 12})
-plt.ylabel('# Samples', fontdict={'family' : 'Times New Roman', 'size' : 12})
+plt.xlabel('Ratio of tooth area to image area', fontdict={'family' : 'Times New Roman', 'size': 18})
+plt.ylabel('# Samples', fontdict={'family' : 'Times New Roman', 'size' : 18})
 # plt.title('Mask Ratio Distribution')
-plt.legend(handles=[l1, l2], loc='upper right', prop={'family' : 'Times New Roman', 'size' : 12})
+plt.legend(handles=[l1, l2], loc='upper right', prop={'family' : 'Times New Roman', 'size' : 18})
 plt.grid(True)
 
 # 添加不同范围的底色
