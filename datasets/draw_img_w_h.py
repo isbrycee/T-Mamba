@@ -12,7 +12,7 @@ def plot_image_size_distribution(folder_path, save_path=None):
             filepath = os.path.join(folder_path, filename)
             with Image.open(filepath) as img:
                 width, height = img.size
-                if height < 400:
+                if height < 200:
                     continue
                 image_sizes.append((width, height))
 
@@ -24,8 +24,11 @@ def plot_image_size_distribution(folder_path, save_path=None):
 
     # 绘制直方图
     plt.figure(figsize=(10, 6))
-    plt.xlabel('Width')
-    plt.ylabel('Height')
+    plt.xlabel('Width', fontdict={'family' : 'Times New Roman', 'size': 18})
+    plt.ylabel('Height', fontdict={'family' : 'Times New Roman', 'size': 18})
+    # 设置 x 轴和 y 轴坐标刻度的大小
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
 
     # 遍历直方图中的所有点
     for i in range(hist.shape[0]):
@@ -39,7 +42,7 @@ def plot_image_size_distribution(folder_path, save_path=None):
                 plt.scatter(yedges[j], xedges[i], color=plt.cm.bwr(color), marker='o', s=point_size, alpha=0.8, edgecolors='black')
                 # 在每个点上显示数量
                 if int(hist[i, j]) > 100:
-                    plt.text(yedges[j], xedges[i], f"{int(hist[i, j])}", ha='center', va='center', color='black', fontsize=8)
+                    plt.text(yedges[j], xedges[i], f"{int(hist[i, j])}", ha='center', va='center', color='black', fontsize=10, fontdict={'weight':'bold'})
 
 #     plt.title('Image Size Distribution')
     plt.grid(True)
