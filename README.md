@@ -10,13 +10,11 @@
 This repository is the official implementation of the [T-Mamba: A unified framework with Long-Range Dependency in dual-domain for 2D & 3D Tooth Segmentation
 ](https://arxiv.org/pdf/2404.01065.pdf).
 
-More experiments are running 🔥
+We have conducted more experiments and analysis on 3D CBCT and 2D X-ray images, and have updated the whole manuscript. 🏃‍♂️
 
-We are conducting more experiments and analysis on 3D CBCT and 2D X-ray images, and will update the whole manuscript. 🏃‍♂️
+The code, pre-trained weights, and datasets is fully available.
 
-The code, pre-trained weights, and datasets will be fully available.
-
-Currently, our T-Mamba supports 2D & 3D vision tasks. Welcome to try it for improving your model's performance.
+Currently, our T-Mamba supports 2D & 3D vision tasks. Welcome to try it for improving your model's performance. 🔥
 
 The proposed TED3 dataset is available at: [Hugging Face](https://huggingface.co/datasets/Bryceee/TED3).
 
@@ -56,4 +54,17 @@ sh test_2d.sh # for 2D
 ```sh
 sh infer_3d.sh # for 3D
 sh infer_2d.sh # for 2D
+```
+
+## Citing SAM 2
+
+If you use SAM 2 or the SA-V dataset in your research, please use the following BibTeX entry.
+
+```bibtex
+@article{hao2024t,
+  title={T-Mamba: A unified framework with Long-Range Dependency in dual-domain for 2D \& 3D Tooth Segmentation},
+  author={Hao, Jing and Zhu, Yonghui and He, Lei and Liu, Moyun and Tsoi, James Kit Hon and Hung, Kuo Feng},
+  journal={arXiv preprint arXiv:2404.01065},
+  year={2024}
+}
 ```
