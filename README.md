@@ -58,7 +58,7 @@ sh infer_2d.sh # for 2D
 
 ## Citing SAM 2
 
-If you use SAM 2 or the SA-V dataset in your research, please use the following BibTeX entry.
+If you use TED3 dataset or the T-Mamba network in your research, please use the following BibTeX entry.
 
 ```bibtex
 @article{hao2024t,
