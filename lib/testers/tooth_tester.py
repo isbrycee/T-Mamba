@@ -123,7 +123,7 @@ class ToothTester:
         return output
 
     def load(self):
-        pretrain_state_dict = torch.load(self.opt["pretrain"], map_location=lambda storage, loc: storage.cuda(self.device))
+        pretrain_state_dict = torch.load(self.opt["pretrain"], map_location=lambda storage, loc: storage.cuda(self.device.index))
         model_state_dict = self.model.state_dict()
         load_count = 0
         for param_name in model_state_dict.keys():

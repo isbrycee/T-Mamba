@@ -45,11 +45,15 @@ class SurfaceOverlappingValues(object):
         :param target: 标注图像,(B, H, W, D)
         :return:
         """
-        # 对预测图进行Sigmiod或者Sofmax归一化操作
-        input = self.normalization(input)
-
-        # 将预测图像进行分割
-        seg = torch.argmax(input, dim=1)
+        if len(input.shape) == 5:
+            # 对预测图进行Sigmiod或者Sofmax归一化操作
+            input = self.normalization(input)
+            # 将预测图像进行分割
+            seg = torch.argmax(input, dim=1)
+        elif len(input.shape) == 3:
+            seg = input.unsqueeze(0)
+            target = target.unsqueeze(0)
+        
         # 判断预测图和真是标签图的维度大小是否一致
         assert seg.shape == target.shape, "seg和target的维度大小不一致"
         # 转换seg和target数据类型为整型

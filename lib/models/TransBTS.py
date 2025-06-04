@@ -352,7 +352,7 @@ def TransBTS(dataset='brats', _conv_repr=True, _pe_type="learned"):
 
 
 if __name__ == '__main__':
-    x = torch.rand((1, 1, 160, 160, 96))
+    x = torch.rand((1, 1, 160, 160, 96)).float().cuda()
 
     model = BTS(img_dim=(160, 160, 96), patch_dim=8, num_channels=1, num_classes=2,
                 embedding_dim=512,
@@ -363,8 +363,25 @@ if __name__ == '__main__':
                 attn_dropout_rate=0.1,
                 conv_patch_representation=True,
                 positional_encoding_type="learned",
-                )
+                ).cuda()
 
     y = model(x)
     print(x.size())
     print(y.size())
+
+    def count_parameters(model):
+        return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+    total_params = count_parameters(model)
+    print(f"Total trainable parameters: {total_params / 1e6:.2f}M")  # 转换为百万单位
+    
+    from torchinfo import summary
+    summary(model, input_size=(1, 1, 160, 160, 96))  # batch_size=1
+
+    from thop import profile
+    flops, params = profile(model, inputs=(x,))
+    print(f"thop FLOPs: {flops / 1e9} GFLOPs")
+
+    from fvcore.nn import FlopCountAnalysis
+    flops = FlopCountAnalysis(model, x).total()
+    print(f"fvcore FLOPs: {flops / 1e9} GFLOPs")  # 转换为 GFLOPs

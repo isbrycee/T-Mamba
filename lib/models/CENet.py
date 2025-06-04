@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torchvision import models
 import torch.nn.functional as F
+import numpy as np
 
 from functools import partial
 # from .resnet import resnet34
@@ -573,9 +574,31 @@ class UNet(nn.Module):
 
 
 if __name__ == '__main__':
-    input = torch.rand(2, 3, 224, 320)
-    # model = RCEM(3, 64)
-    # model = BasicBlock(3, 64, 64)
-    model = CE_Net()
-    out12 = model(input)
-    print(out12.shape)
+    x = torch.rand((1, 3, 224, 224)).to("cuda:0")
+
+    input_value = np.random.randn(1, 3, 640, 1280)
+    input_value = torch.from_numpy(input_value).float().cuda()
+    print(input_value.dtype)
+
+    model = CE_Net(2,3).to("cuda:0")
+    model.train()
+
+    out = model(input_value)
+    print(out.shape)
+
+    def count_parameters(model):
+        return sum(p.numel() for p in model.parameters() if p.requires_grad)
+    
+    total_params = count_parameters(model)
+    print(f"Total trainable parameters: {total_params / 1e6:.2f}M")  # 转换为百万单位
+    
+    from torchinfo import summary
+    summary(model, input_size=(1, 3, 640, 1280))  # batch_size=1
+    
+    from thop import profile
+    flops, params = profile(model, inputs=(input_value,))
+    print(f"thop FLOPs: {flops / 1e9} GFLOPs")
+
+    from fvcore.nn import FlopCountAnalysis
+    flops = FlopCountAnalysis(model, input_value).total()
+    print(f"fvcore FLOPs: {flops / 1e9} GFLOPs")  # 转换为 GFLOPs

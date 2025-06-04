@@ -232,7 +232,7 @@ params_ISIC_2018 = {
 }
 params_Tooth_2D_X_ray = {
     # ——————————————————————————————————————————————     Launch Initialization    ———————————————————————————————————————————————————
-    "CUDA_VISIBLE_DEVICES": "7",
+    "CUDA_VISIBLE_DEVICES": "0",
     "seed": 1777777,
     "cuda": True,
     "benchmark": False,
@@ -351,7 +351,7 @@ def main():
 
     # get the cuda device
     if params["cuda"]:
-        params["device"] = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        params["device"] = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     else:
         params["device"] = torch.device("cpu")
     print(params["device"])
@@ -360,7 +360,7 @@ def main():
     # initialize the model
     model = models.get_model(params)
     print("Complete the initialization of model:{}".format(params["model_name"]))
-
+    
     # initialize the tester
     tester = testers.get_tester(params, model)
     print("Complete the initialization of tester")
@@ -392,7 +392,7 @@ def main():
             valid_image = []
             for root, dirs, files in os.walk(args.image_dir):
                 for file in files:
-                    if file.endswith('.jpg'):
+                    if file.endswith('.png'):
                         valid_image.append(os.path.join(root, file))
             for img in valid_image:
                 tester.inference(img)

@@ -42,15 +42,21 @@ class DICE(object):
         Returns:
         """
         # ont-hot处理，将标注图在axis=1维度上扩张，该维度大小等于预测图的通道C大小，维度上每一个索引依次对应一个类别,(B, C, H, W, D)
+        if len(target.shape) == 3:
+            target = target.unsqueeze(0)
         target = expand_as_one_hot(target.long(), self.num_classes)
+
+        # 对预测图进行Sigmiod或者Sofmax归一化操作
+        if len(input.shape) == 3:
+            input = input.unsqueeze(0)
+            input = expand_as_one_hot(input.long(), self.num_classes)
+        else:
+            input = self.normalization(input)
 
         # 判断one-hot处理后标注图和预测图的维度是否都是5维
         assert input.dim() == target.dim() == 5, "one-hot处理后标注图和预测图的维度不是都为5维！"
         # 判断one-hot处理后标注图和预测图的尺寸是否一致
         assert input.size() == target.size(), "one-hot处理后预测图和标注图的尺寸不一致！"
-
-        # 对预测图进行Sigmiod或者Sofmax归一化操作
-        input = self.normalization(input)
 
         return compute_per_channel_dice(input, target, epsilon=1e-6, mode=self.mode)
 

@@ -447,6 +447,7 @@ class FlopCounter:
         flops = output_elements  # Assuming 1 operation per output element for trilinear interpolation
         self.flops += flops
         print(f"Upsample: {flops:,} FLOPs")
+        
 def count_flops_tmamba3d(model, input_size):
     counter = FlopCounter()
     B, C, H, W, D = input_size

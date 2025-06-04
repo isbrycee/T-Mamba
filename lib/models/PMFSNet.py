@@ -159,10 +159,6 @@ class PMFSNet(nn.Module):
 
         return out
 
-
-
-
-
 if __name__ == '__main__':
 
     def count_parameters(model):
@@ -174,7 +170,7 @@ if __name__ == '__main__':
 
     scaling_versions = ["BASIC", "SMALL", "TINY"]
 
-    xs = [torch.randn((1, 1, 160, 160, 96)).to(device), torch.randn((1, 3, 224, 224)).to(device)]
+    xs = [torch.randn((1, 1, 160, 160, 96)).to(device), torch.randn((1, 3, 640, 1280)).to(device)]
 
     for i, dim in enumerate(dims):
         for scaling_version in scaling_versions:
@@ -184,3 +180,20 @@ if __name__ == '__main__':
             print(xs[i].size())
             print(y.size())
             print("params: {:.6f}M".format(count_parameters(model)))
+
+            def count_parameters(model):
+                return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+            total_params = count_parameters(model)
+            print(f"Total trainable parameters: {total_params / 1e6:.2f}M")  # 转换为百万单位
+            
+            from torchinfo import summary
+            summary(model, input_size=xs[i].shape)  # batch_size=1
+
+            from thop import profile
+            flops, params = profile(model, inputs=(xs[i],))
+            print(f"thop FLOPs: {flops / 1e9} GFLOPs")
+
+            from fvcore.nn import FlopCountAnalysis
+            flops = FlopCountAnalysis(model, xs[i]).total()
+            print(f"fvcore FLOPs: {flops / 1e9} GFLOPs")  # 转换为 GFLOPs

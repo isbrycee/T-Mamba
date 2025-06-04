@@ -14,7 +14,7 @@ def process_grayscale_images(folder_path, threshold=128):
             binary_img.save(filepath)
 
 if __name__ == "__main__":
-    folder_path = "/root/paddlejob/workspace/env_run/output/haojing08/datasets_dental/2D-X-Ray/final_labelled/masks_ours"  # 替换成你的文件夹路径
+    folder_path = "/home/jinghao/projects/T-Mamba/datasets/MICCAI2023/2D/train/annotations"  # 替换成你的文件夹路径
 
     # 将文件夹中的所有灰度图像处理为二值图像
     process_grayscale_images(folder_path)

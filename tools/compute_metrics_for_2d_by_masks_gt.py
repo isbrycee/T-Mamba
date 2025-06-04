@@ -120,8 +120,8 @@ class ComputeMetricfor2D:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--gt_dir", type=str, default="/root/paddlejob/workspace/env_run/output/haojing08/gem/MaskDINO-main-Gem_/datasets/Tooth2D-X-Ray-6k/test/annotations", help="dataset name")
-    parser.add_argument("--mask_dir", type=str, default="/root/paddlejob/workspace/env_run/output/haojing08/gem/MaskDINO-main-Gem_/datasets/Tooth2D-X-Ray-6k/test_mask_gem", help="model name")
+    parser.add_argument("--gt_dir", type=str, default="/home/jinghao/projects/T-Mamba/datasets/TED3/test/annotations", help="dataset name")
+    parser.add_argument("--mask_dir", type=str, default="/home/jinghao/projects/T-Mamba/compare_exps/DenUnet/DenUnet/predictions/DenUnet", help="model name")
     args = parser.parse_args()
     return args
 

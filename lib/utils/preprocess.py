@@ -24,8 +24,8 @@ def create_sub_volumes(images_path_list, labels_path_list, opt):
     for i in range(opt["samples_train"]):
         print("id:", i)
         random_index = np.random.randint(image_num)
-        print(labels_path_list[random_index])
-        label_np = load_image_or_label(labels_path_list[random_index], opt["resample_spacing"], type="label")
+        # print(labels_path_list[random_index])
+        label_np, _ = load_image_or_label(labels_path_list[random_index], opt["resample_spacing"], type="label")
 
         cnt_loop = 0
         while True:
@@ -82,7 +82,7 @@ def find_non_zero_labels_mask(label_map, th_percent, crop_size, crop_point):
         return False
 
 
-def load_image_or_label(path, resample_spacing, type=None):
+def load_image_or_label(path, resample_spacing, gt_spacing=None, type=None):
     if type == "label":
         img_np, spacing = load_label(path)
         # print(img_np.shape, spacing)
@@ -90,14 +90,17 @@ def load_image_or_label(path, resample_spacing, type=None):
         img_np, spacing = load_image(path)
 
     order = 0 if type == "label" else 3
-    img_np = resample_image_spacing(img_np, spacing, resample_spacing, order)
+    if gt_spacing:
+        img_np = resample_image_spacing(img_np, gt_spacing, resample_spacing, order)
+    else:
+        img_np = resample_image_spacing(img_np, spacing, resample_spacing, order)
 
     # if type == "label":
-    #     print(img_np.shape)
+        # print(img_np.shape)
 
     # img_tensor = torch.from_numpy(img_np)
 
-    return img_np
+    return img_np, spacing
 
 
 def load_nii_file(file_path):
@@ -162,17 +165,6 @@ def crop_img(img_np, crop_size, crop_point):
         return img_np.unsqueeze(0)
 
     return img_np
-
-
-
-
-
-
-
-
-
-
-
 
 
 

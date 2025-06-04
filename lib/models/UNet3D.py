@@ -139,13 +139,26 @@ def number_of_features_per_level(init_channel_number, num_levels):
 if __name__ == '__main__':
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    x = torch.randn((1, 1, 96, 160, 160)).to(device)
-
-    model = UNet3D(in_channels=1, out_channels=35).to(device)
-
-    output = model(x)
-
-    print(x.size())
+    input_tensor = torch.randn((1, 1, 96, 160, 160)).to(device)
+    model = UNet3D(in_channels=1, out_channels=2).to(device)
+    output = model(input_tensor)
+    
+    print(input_tensor.size())
     print(output.size())
 
+    def count_parameters(model):
+        return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
+    total_params = count_parameters(model)
+    print(f"Total trainable parameters: {total_params / 1e6:.2f}M")  # 转换为百万单位
+    
+    from torchinfo import summary
+    summary(model, input_size=(1, 1, 96, 160, 160))  # batch_size=1
+
+    from thop import profile
+    flops, params = profile(model, inputs=(input_tensor,))
+    print(f"thop FLOPs: {flops / 1e9} GFLOPs")
+
+    from fvcore.nn import FlopCountAnalysis
+    flops = FlopCountAnalysis(model, input_tensor).total()
+    print(f"fvcore FLOPs: {flops / 1e9} GFLOPs")  # 转换为 GFLOPs

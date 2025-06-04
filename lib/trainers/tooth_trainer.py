@@ -60,7 +60,7 @@ class ToothTrainer:
             self.optimizer.zero_grad()
 
             self.train_epoch(epoch)
-
+            
             self.valid_epoch(epoch)
 
             if isinstance(self.lr_scheduler, optim.lr_scheduler.ReduceLROnPlateau):
@@ -410,5 +410,5 @@ class ToothTrainer:
         else:
             if self.opt["pretrain"] is not None:
                 model_state_dict = torch.load(self.opt["pretrain"], map_location=lambda storage, loc: storage.cuda(self.device))
-                self.model.load_state_dict(model_state_dict, strict=True)
+                self.model.load_state_dict(model_state_dict, strict=False)
                 print('Succesfully loaded pretrained model: {}.'.format(self.opt["pretrain"]))

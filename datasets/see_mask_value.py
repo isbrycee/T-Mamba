@@ -19,5 +19,5 @@ def print_unique_pixel_values(folder_path):
         print(value)
 
 # 测试函数
-folder_path = "/root/paddlejob/workspace/env_run/output/haojing08/PMFSNet-master-multigpu/datasets/Tooth2D-X-Ray-6k/train/annotations"
+folder_path = "/home/jinghao/projects/T-Mamba/datasets/TED3/train/annotations"
 print_unique_pixel_values(folder_path)

@@ -15,7 +15,7 @@ from lib import utils, dataloaders, models, metrics, testers
 
 params_3D_CBCT_Tooth = {
     # ——————————————————————————————————————————————    Launch Initialization    —————————————————————————————————————————————————
-    "CUDA_VISIBLE_DEVICES": "6",
+    "CUDA_VISIBLE_DEVICES": "0",
     "seed": 1777777,
     "cuda": True,
     "benchmark": False,
@@ -274,7 +274,7 @@ def main():
 
     # get the cuda device
     if params["cuda"]:
-        params["device"] = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        params["device"] = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     else:
         params["device"] = torch.device("cpu")
     print(params["device"])

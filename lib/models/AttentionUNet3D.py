@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+import numpy as np
+from monai.networks.nets import AttentionUnet
 
 
 class AttentionUNet3D(nn.Module):
@@ -220,3 +222,35 @@ class Encoder3D(nn.Module):
         p = self.pool(c)
 
         return c, p
+
+
+def main():
+    input_value = np.random.randn(1, 1, 96, 160, 160)
+    input_value = torch.from_numpy(input_value).float().cuda()
+    print(input_value.dtype)
+
+    model = AttentionUnet(spatial_dims=3, in_channels=1, out_channels=2, channels=(64, 128, 256, 512, 1024), strides=(2, 2, 2, 2)).cuda()
+    model.train()
+    
+    out = model(input_value)
+    print(out.shape)
+
+    def count_parameters(model):
+        return sum(p.numel() for p in model.parameters() if p.requires_grad)
+    
+    total_params = count_parameters(model)
+    print(f"Total trainable parameters: {total_params / 1e6:.2f}M")  # 转换为百万单位
+    
+    from torchinfo import summary
+    summary(model, input_size=(1, 1, 96, 160, 160))  # batch_size=1
+
+    from thop import profile
+    flops, params = profile(model, inputs=(input_value,))
+    print(f"thop FLOPs: {flops / 1e9} GFLOPs")
+
+    from fvcore.nn import FlopCountAnalysis
+    flops = FlopCountAnalysis(model, input_value).total()
+    print(f"fvcore FLOPs: {flops / 1e9} GFLOPs")  # 转换为 GFLOPs
+
+if __name__ == '__main__':
+    main()

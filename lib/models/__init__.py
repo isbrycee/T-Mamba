@@ -14,7 +14,6 @@ import lib.utils as utils
 import lib.models.nnunetv2 as nnunetv2
 
 from .DenseVNet import DenseVNet
-from .DenseVNet2D import DenseVNet2D
 from .TMamba3D import TMamba3D
 from .TMamba2D import TMamba2D
 from .UNet3D import UNet3D
@@ -70,7 +69,7 @@ def get_model_optimizer_lr_scheduler(opt):
         elif opt["model_name"] == "AttentionUNet3D":
             # model = AttentionUNet3D(in_channels=opt["in_channels"], out_channels=opt["classes"])
             model = AttentionUnet(spatial_dims=3, in_channels=opt["in_channels"], out_channels=opt["classes"], channels=(64, 128, 256, 512, 1024), strides=(2, 2, 2, 2))
-
+        
         elif opt["model_name"] == "R2UNet":
             model = R2U_Net(in_channels=opt["in_channels"], out_channels=opt["classes"])
 
